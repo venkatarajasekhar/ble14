@@ -40,6 +40,7 @@
 /*********************************************************************
  * INCLUDES
  */
+#include <string.h>
 
 #include "bcomdef.h"
 #include "OSAL.h"
@@ -50,10 +51,15 @@
 #include "hal_lcd.h"
 #include "ll.h"
 #include "hci.h"
-
+#include "hal_uart.h"
 #include "observer.h"
 
 #include "simpleBLEObserver.h"
+
+#include "pt.h"
+
+#define DELAY_MS(milli)         timestamp = osal_GetSystemClock(); \
+                                PT_WAIT_UNTIL(pt, osal_GetSystemClock() - timestamp > milli);
 
 /*********************************************************************
  * MACROS
@@ -81,6 +87,18 @@
 // TRUE to use white list during discovery
 #define DEFAULT_DISCOVERY_WHITE_LIST          FALSE
 
+#define AFUNC_UNAVAIL                           ((uint8)-2)
+#define AFUNC_BLOCKING                          ((uint8)-1)
+#define ASTATE_FINAL                            (-1)
+
+
+#define PEEK            0
+#define KICK            1
+
+#define OP_AVAIL        0                        
+#define OP_INIT         1
+#define OP_KICK         2
+
 /*********************************************************************
  * TYPEDEFS
  */
@@ -88,7 +106,10 @@
 /*********************************************************************
  * GLOBAL VARIABLES
  */
+char  WiflyInBuffer[512];           // input buffer used to receive data from WiFly
+int   WiflyInBufferIndex;           // index to wifly input buffer array
 
+   
 /*********************************************************************
  * EXTERNAL VARIABLES
  */
@@ -117,6 +138,16 @@ static gapDevRec_t simpleBLEDevList[DEFAULT_MAX_SCAN_RES];
 // Scanning state
 static uint8 simpleBLEScanning = FALSE;
 
+// global error code for peek-kick
+static uint8 error;
+
+/*********************************************************************/
+
+static halUARTCfg_t uartConfig;
+
+unsigned char wiflyInBuffer[512];
+uint16 wiflyInBufferIndex;
+
 /*********************************************************************
  * LOCAL FUNCTIONS
  */
@@ -125,6 +156,8 @@ static void simpleBLEObserver_HandleKeys( uint8 shift, uint8 keys );
 static void simpleBLEObserver_ProcessOSALMsg( osal_event_hdr_t *pMsg );
 static void simpleBLEAddDeviceInfo( uint8 *pAddr, uint8 addrType );
 char *bdAddr2Str ( uint8 *pAddr );
+
+static void hang(){ /** do nothing **/ };
 
 /*********************************************************************
  * PROFILE CALLBACKS
@@ -136,6 +169,185 @@ static const gapObserverRoleCB_t simpleBLERoleCB =
   NULL,                     // RSSI callback
   simpleBLEObserverEventCB  // Event callback
 };
+
+/*********************************************************************
+*/
+
+static void flushUARTRxBuffer(uint8 port) {
+  
+  uint8 c;
+  
+  while (Hal_UART_RxBufLen(port)) {
+    HalUARTRead(port, &c, 1);
+  }
+}
+
+/*********************************************************************
+* state machine for asynchronous function: wifly_hardware_reset
+*/
+#define CTS_HIGH        1
+#define CTS_NOT_HIGH    0                               // quick and dirty placeholder
+
+static 
+PT_THREAD(wifly_hard_reset_pt(struct pt *pt))
+{
+  static uint32 timestamp;
+    
+  PT_BEGIN(pt);
+
+  P1_2 = 0;                                            // Drive Low
+  P1DIR |= (1 << 2);        
+  DELAY_MS(50);
+  P1DIR &= ~(1 << 2);                                   // High Z
+  DELAY_MS(100);
+  error = CTS_HIGH ? SUCCESS : FAILURE;
+  
+  PT_END(pt);
+}
+
+static 
+PT_THREAD(wifly_enter_command_mode_pt(struct pt * pt))
+{
+  static uint32 timestamp;
+  
+  PT_BEGIN(pt);
+  
+  flushUARTRxBuffer(HAL_UART_PORT_0);           // flush rx
+  
+  DELAY_MS(350);                                // 250ms at least
+  HalUARTWrite(HAL_UART_PORT_0, "$$$", 3);      // write token
+  DELAY_MS(350);                                // 250ms at least
+  
+  unsigned char* temp_ptr;                      // locals NOT continued.
+  int j, len;                                   // don't stop
+       
+  osal_memset(wiflyInBuffer, '\0', sizeof(wiflyInBuffer));
+  len = Hal_UART_RxBufLen(HAL_UART_PORT_0);
+  if (0 == len) {
+    error = FAILURE;
+    PT_EXIT(pt);
+  }
+
+  HalUARTRead(HAL_UART_PORT_0,                  // read rx buffer
+              wiflyInBuffer, 
+              Hal_UART_RxBufLen(HAL_UART_PORT_0));
+
+  temp_ptr = wiflyInBuffer;             // trim leading null
+  for (j = 0; j < 16; j++) {            // assuming at most 16 leading null
+    if (*temp_ptr == '\0') 
+      temp_ptr++;
+    else 
+      break;
+  }    
+  error = (strstr((char const*)&wiflyInBuffer[j], "CMD")) ? SUCCESS : FAILURE;
+  
+  PT_END(pt);
+}
+
+typedef struct {
+  const char *type;
+  const char *category;
+  const char *option;
+  const char *value;
+  const char *response;
+  uint32      timeout;
+} wifly_send_command_param_t;
+
+static wifly_send_command_param_t wifly_send_command_params;
+
+static 
+PT_THREAD(wifly_send_command_pt(struct pt * pt))
+{
+  static uint32 timestamp;
+  static int index;
+  static uint8 c;
+  static wifly_send_command_param_t* param = &wifly_send_command_params;
+  
+  PT_BEGIN(pt);
+
+  if(param->type != NULL)
+  {
+    HalUARTWrite(HAL_UART_PORT_0, (uint8*)param->type, strlen(param->type));
+  }
+  if(param->category != NULL)
+  {
+    HalUARTWrite(HAL_UART_PORT_0, " ", 1);
+    HalUARTWrite(HAL_UART_PORT_0, (uint8*)param->category, strlen(param->category));
+  }
+  if(param->option != NULL)
+  {
+    HalUARTWrite(HAL_UART_PORT_0, " ", 1);
+    HalUARTWrite(HAL_UART_PORT_0, (uint8*)param->option, strlen(param->option));
+  }
+  if(param->value != NULL)
+  {
+    HalUARTWrite(HAL_UART_PORT_0, " ", 1);
+    HalUARTWrite(HAL_UART_PORT_0, (uint8*)param->value, strlen(param->value));
+  }
+  
+  HalUARTWrite(HAL_UART_PORT_0, "\r", 1);
+
+  if (param->response == NULL) {
+    error = SUCCESS;
+    PT_EXIT(pt);
+  }
+  
+  // initialize the receiving buffer
+  memset(WiflyInBuffer, '\0', sizeof(WiflyInBuffer));
+  index = 0;
+  timestamp = osal_GetSystemClock();
+  
+  /******************************
+   *    read char until 
+        1 timeout
+        2 end reached. (by >)
+        buffer full (not considered)
+   */
+  while (1) {
+    
+    if (osal_GetSystemClock() - timestamp > param->timeout) {
+      error = FAILURE;          // time out
+      PT_EXIT(pt);
+    }
+    
+    // read rx or block
+    PT_WAIT_UNTIL(pt, HalUARTRead(HAL_UART_PORT_0, &c, 1));
+    
+    if (c == '>')
+      break;
+    
+    WiflyInBuffer[index++] = c;
+  }
+  
+  // search for instance of "command_response" within the Rx buffer
+  error = (strstr(WiflyInBuffer, param -> response)) ? SUCCESS : FAILURE;
+  PT_END(pt);
+}
+
+static struct pt pt_test1_pt;
+static 
+PT_THREAD(pt_test1(struct pt * pt) ) {
+  
+  static struct pt child;
+  
+  PT_BEGIN(pt);
+  
+  PT_SPAWN(pt, &child, wifly_hard_reset_pt(&child));
+  if (error) PT_EXIT(pt);
+  
+  PT_SPAWN(pt, &child, wifly_enter_command_mode_pt(&child));
+  if (error) PT_EXIT(pt);
+  
+  osal_memset(&wifly_send_command_params, 0, sizeof(wifly_send_command_params));
+  wifly_send_command_params.type = "factory RESET\r";
+  wifly_send_command_params.timeout = 2000000;
+  PT_SPAWN(pt, &child, wifly_send_command_pt(&child));
+  
+  if (error) PT_EXIT(pt);
+  
+  PT_END(pt);
+}
+
 
 /*********************************************************************
  * PUBLIC FUNCTIONS
@@ -175,8 +387,23 @@ void SimpleBLEObserver_Init( uint8 task_id )
   // makes sure LEDs are off
   HalLedSet( (HAL_LED_1 | HAL_LED_2), HAL_LED_MODE_OFF );
   
+  uartConfig.configured = TRUE;
+  uartConfig.baudRate = HAL_UART_BR_9600;
+  uartConfig.flowControl = FALSE;
+  uartConfig.flowControlThreshold = 0;
+  uartConfig.rx.maxBufSize = 256;
+  uartConfig.tx.maxBufSize = 256;
+  uartConfig.idleTimeout = 6;
+  uartConfig.intEnable = TRUE;
+  uartConfig.callBackFunc = 0;
+  
+  HalUARTOpen(HAL_UART_PORT_0, &uartConfig);
+  
   // Setup a delayed profile startup
   osal_set_event( simpleBLETaskId, START_DEVICE_EVT );
+  osal_set_event( simpleBLETaskId, SELF_MESSAGE_EVT );
+  
+  PT_INIT(&pt_test1_pt);
 }
 
 /*********************************************************************
@@ -220,7 +447,15 @@ uint16 SimpleBLEObserver_ProcessEvent( uint8 task_id, uint16 events )
 
     return ( events ^ START_DEVICE_EVT );
   }
+  if ( events & SELF_MESSAGE_EVT )
+  {
+    if ( pt_test1(&pt_test1_pt) ) {
+      events ^= SELF_MESSAGE_EVT;       // stop busy loop
+    }
+    return events;      // don't clear bit.
+  }
   
+  // return test1_ProcessEvent( events );
   // Discard unknown events
   return 0;
 }

@@ -1549,6 +1549,7 @@
           <state>$PROJ_DIR$\..\..\..\..\Components\ble\controller\include</state>
           <state>$PROJ_DIR$\..\..\..\..\Components\ble\hci</state>
           <state>$PROJ_DIR$\..\..\..\..\Components\ble\host</state>
+          <state>$PROJ_DIR$\..\..\..\..\Components\pt-1.4</state>
           <state>$PROJ_DIR$\..\..\common\cc2540</state>
           <state>$PROJ_DIR$\..\..\common\npi\npi_np</state>
           <state>$PROJ_DIR$\..\..\Include</state>
@@ -2173,6 +2174,12 @@
     </file>
     <file>
       <name>$PROJ_DIR$\..\Source\simpleBLEObserver_Main.c</name>
+    </file>
+    <file>
+      <name>$PROJ_DIR$\..\Source\wifly_util.c</name>
+    </file>
+    <file>
+      <name>$PROJ_DIR$\..\Source\wifly_util.h</name>
     </file>
   </group>
   <group>

@@ -56,7 +56,11 @@ extern "C"
 
 // Simple BLE Observer Task Events
 #define START_DEVICE_EVT                              0x0001
-#define START_DISCOVERY_EVT                           0x0002
+// #define START_DISCOVERY_EVT                           0x0002
+#define TIMER1_EVT                                    0x0002
+#define TIMER2_EVT                                    0x0004
+#define SELF_MESSAGE_EVT                              0x0008  
+  
 
 /*********************************************************************
  * MACROS
