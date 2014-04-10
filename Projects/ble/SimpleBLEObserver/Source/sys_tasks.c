@@ -44,6 +44,7 @@ SUBSTITUTE GOODS, TECHNOLOGY, SERVICES, OR ANY CLAIMS BY THIRD PARTIES
 // Section: Included Files
 // *****************************************************************************
 // *****************************************************************************
+#if 0
 #include <xc.h>
 #include <sys_config.h>
 #include <stdint.h>
@@ -1383,122 +1384,124 @@ void httpParseLine()
         PIC_RTS = 1;
         U1STAbits.OERR  = 0;
 
-        /* put module in infrastructure mode using the configuration parameters */
-        if(!wifly_util_enter_command_mode())
         {
-            sprintf(OutString,"\r\ncould not enter command mode...halting\r\n");
-            putsConsole(OutString);
-            while(1);
-        }
-         
-        // leave any auto-joined network
-        if(!wifly_util_send_command(ACTION_LEAVE, NULL, NULL, NULL, STD_RESPONSE))
-        {
-            sprintf(OutString,"\r\nleave...failed\r\n");
-            putsConsole(OutString);
-            while(1);
-        }
-        // re-program SSID, passphrase, channel from user input
+          /* put module in infrastructure mode using the configuration parameters */
+          if(!wifly_util_enter_command_mode())
+          {
+              sprintf(OutString,"\r\ncould not enter command mode...halting\r\n");
+              putsConsole(OutString);
+              while(1);
+          }
+           
+          // leave any auto-joined network
+          if(!wifly_util_send_command(ACTION_LEAVE, NULL, NULL, NULL, STD_RESPONSE))
+          {
+              sprintf(OutString,"\r\nleave...failed\r\n");
+              putsConsole(OutString);
+              while(1);
+          }
+          // re-program SSID, passphrase, channel from user input
+          
+          if(!wifly_util_send_command(SET, WLAN, SSID, ssid, STD_RESPONSE))
+          {
+              sprintf(OutString,"\r\nEZC1: set wlan ssid...failed\r\n");
+              putsConsole(OutString);
+              while(1);
+          }
+
+          if(!wifly_util_send_command(SET, WLAN, PHRASE, passwd, STD_RESPONSE))
+          {
+              sprintf(OutString,"\r\nEZC1:set wlan phrase...failed\r\n");
+              putsConsole(OutString);
+              while(1);
+          }
+
+          if(!wifly_util_send_command(SET, WLAN, CHANNEL, chan, STD_RESPONSE))
+          {
+              sprintf(OutString,"\r\nEZC1:set wlan channel...failed\r\n");
+              putsConsole(OutString);
+              while(1);
+          }
+
+          // restore ip parameters
+          if(!wifly_util_send_command(SET, IP, DHCP, DHCP_MODE_ON, STD_RESPONSE))
+          {
+              sprintf(OutString,"\r\nEZC1:set ip dhcp...failed\r\n");
+              putsConsole(OutString);
+              while(1);
+          }
+
+          /* Settng host ip to 0.0.0.0 is a MUST or else the DNS client process
+           * WILL NOT START !!!!!, and the http client demo is dependent on the
+           * dns client process auto starting.
+          */
+
+          if(!wifly_util_send_command(SET, IP, HOST, "0.0.0.0", STD_RESPONSE))
+          {
+               sprintf(OutString,"\r\nset ip host...failed\r\n");
+               putsConsole(OutString);
+               while(1);
+          }
+
+          // restore remaining module parameters to defaults (those changed by entry into EZConfig mode)
+
+          // set comm close 0
+          if(!wifly_util_send_command(SET, COMM, CLOSE, CLOSE_VALUE, STD_RESPONSE))
+          {
+              sprintf(OutString,"\r\nset comm close 0...failed\r\n");
+              putsConsole(OutString);
+              while(1);
+          }
+
+          // set comm open 0
+          if(!wifly_util_send_command(SET, COMM, OPEN, OPEN_VALUE, STD_RESPONSE))
+          {
+              sprintf(OutString,"\r\nset comm open 0...failed\r\n");
+              putsConsole(OutString);
+              while(1);
+          }
+
+          // set comm remote 0
+          if(!wifly_util_send_command(SET, COMM, REMOTE, COMM_REMOTE_VALUE, STD_RESPONSE))
+          {
+              sprintf(OutString,"\r\nset comm remote 0...failed\r\n");
+              putsConsole(OutString);
+              while(1);
+          }
+
+          // set wlan join 1
+          if(!wifly_util_send_command(SET, WLAN, JOIN, JOIN_VALUE, STD_RESPONSE))
+          {
+              sprintf(OutString,"\r\nset wlan join 1...failed\r\n");
+              putsConsole(OutString);
+              while(1);
+          }
+
+          // set sys iofunc 0x70
+          if(!wifly_util_send_command(SET, SYS, IOFUNC, IOFUNC_VALUE, STD_RESPONSE))
+          {
+              sprintf(OutString,"\r\nset sys iofunc 0x70...failed\r\n");
+              putsConsole(OutString);
+              while(1);
+          }
+
+          // save the changes
+          if(!wifly_util_send_command(FILEIO_SAVE, NULL, NULL, NULL, STD_RESPONSE))
+          {
+              sprintf(OutString,"\r\nEZC1: save...failed\r\n");
+              putsConsole(OutString);
+              while(1);
+          }
         
-        if(!wifly_util_send_command(SET, WLAN, SSID, ssid, STD_RESPONSE))
-        {
-            sprintf(OutString,"\r\nEZC1: set wlan ssid...failed\r\n");
-            putsConsole(OutString);
-            while(1);
-        }
-
-        if(!wifly_util_send_command(SET, WLAN, PHRASE, passwd, STD_RESPONSE))
-        {
-            sprintf(OutString,"\r\nEZC1:set wlan phrase...failed\r\n");
-            putsConsole(OutString);
-            while(1);
-        }
-
-        if(!wifly_util_send_command(SET, WLAN, CHANNEL, chan, STD_RESPONSE))
-        {
-            sprintf(OutString,"\r\nEZC1:set wlan channel...failed\r\n");
-            putsConsole(OutString);
-            while(1);
-        }
-
-        // restore ip parameters
-        if(!wifly_util_send_command(SET, IP, DHCP, DHCP_MODE_ON, STD_RESPONSE))
-        {
-            sprintf(OutString,"\r\nEZC1:set ip dhcp...failed\r\n");
-            putsConsole(OutString);
-            while(1);
-        }
-
-        /* Settng host ip to 0.0.0.0 is a MUST or else the DNS client process
-         * WILL NOT START !!!!!, and the http client demo is dependent on the
-         * dns client process auto starting.
-        */
-
-        if(!wifly_util_send_command(SET, IP, HOST, "0.0.0.0", STD_RESPONSE))
-        {
-             sprintf(OutString,"\r\nset ip host...failed\r\n");
-             putsConsole(OutString);
-             while(1);
-        }
-
-        // restore remaining module parameters to defaults (those changed by entry into EZConfig mode)
-
-        // set comm close 0
-        if(!wifly_util_send_command(SET, COMM, CLOSE, CLOSE_VALUE, STD_RESPONSE))
-        {
-            sprintf(OutString,"\r\nset comm close 0...failed\r\n");
-            putsConsole(OutString);
-            while(1);
-        }
-
-        // set comm open 0
-        if(!wifly_util_send_command(SET, COMM, OPEN, OPEN_VALUE, STD_RESPONSE))
-        {
-            sprintf(OutString,"\r\nset comm open 0...failed\r\n");
-            putsConsole(OutString);
-            while(1);
-        }
-
-        // set comm remote 0
-        if(!wifly_util_send_command(SET, COMM, REMOTE, COMM_REMOTE_VALUE, STD_RESPONSE))
-        {
-            sprintf(OutString,"\r\nset comm remote 0...failed\r\n");
-            putsConsole(OutString);
-            while(1);
-        }
-
-        // set wlan join 1
-        if(!wifly_util_send_command(SET, WLAN, JOIN, JOIN_VALUE, STD_RESPONSE))
-        {
-            sprintf(OutString,"\r\nset wlan join 1...failed\r\n");
-            putsConsole(OutString);
-            while(1);
-        }
-
-        // set sys iofunc 0x70
-        if(!wifly_util_send_command(SET, SYS, IOFUNC, IOFUNC_VALUE, STD_RESPONSE))
-        {
-            sprintf(OutString,"\r\nset sys iofunc 0x70...failed\r\n");
-            putsConsole(OutString);
-            while(1);
-        }
-
-        // save the changes
-        if(!wifly_util_send_command(FILEIO_SAVE, NULL, NULL, NULL, STD_RESPONSE))
-        {
-            sprintf(OutString,"\r\nEZC1: save...failed\r\n");
-            putsConsole(OutString);
-            while(1);
-        }
         
-        // (hard-)reset the module to apply the new settings
-        sprintf(OutString,"\r\n\r\n...6. Browser Configuration Done\r\n\r\n");
-        putsConsole(OutString);
-        wifly_util_hardware_reset();
+          // (hard-)reset the module to apply the new settings
+          sprintf(OutString,"\r\n\r\n...6. Browser Configuration Done\r\n\r\n");
+          putsConsole(OutString);
+          wifly_util_hardware_reset();
 
-        // delay after module reset/reboot to allow GPIO4 toggle low-high-low
-        Delayms(250);
-
+          // delay after module reset/reboot to allow GPIO4 toggle low-high-low
+          Delayms(250);
+        }
         // set up Associate LED (WiFly PICTAil LEDY) toggle delay
         // toggle every 100mS while waiting to associate
         AssociateLedToggleDelay = TickGet() + TICK_SECOND/10;
@@ -1797,3 +1800,4 @@ void configWiFlyAsSoftAP()
 
 }
 
+#endif

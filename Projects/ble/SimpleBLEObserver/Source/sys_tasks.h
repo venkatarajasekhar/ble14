@@ -43,6 +43,8 @@ SUBSTITUTE GOODS, TECHNOLOGY, SERVICES, OR ANY CLAIMS BY THIRD PARTIES
 #ifndef __SYSTASKS_H__
 #define __SYSTASKS_H__
 
+#if 0
+
 // *****************************************************************************
 // *****************************************************************************
 // Section: Included Files
@@ -135,3 +137,5 @@ void sys_Tasks(void);
 void AppTasks(void);
 
 #endif
+
+#endif // #if 0

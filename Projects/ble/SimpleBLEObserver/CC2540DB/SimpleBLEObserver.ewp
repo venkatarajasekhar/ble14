@@ -2176,6 +2176,12 @@
       <name>$PROJ_DIR$\..\Source\simpleBLEObserver_Main.c</name>
     </file>
     <file>
+      <name>$PROJ_DIR$\..\Source\sys_tasks.c</name>
+    </file>
+    <file>
+      <name>$PROJ_DIR$\..\Source\sys_tasks.h</name>
+    </file>
+    <file>
       <name>$PROJ_DIR$\..\Source\wifly_util.c</name>
     </file>
     <file>

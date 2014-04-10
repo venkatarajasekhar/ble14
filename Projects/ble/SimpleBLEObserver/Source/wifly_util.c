@@ -623,3 +623,4 @@ void buildXMLFile(uint8_t (*accPoints)[25], int numAccPoints)
 }
 
 #endif
+

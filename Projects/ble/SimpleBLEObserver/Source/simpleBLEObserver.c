@@ -57,6 +57,7 @@
 #include "simpleBLEObserver.h"
 
 #include "pt.h"
+#include "wifly_util.h"
 
 #define DELAY_MS(milli)         timestamp = osal_GetSystemClock(); \
                                 PT_WAIT_UNTIL(pt, osal_GetSystemClock() - timestamp > milli);
@@ -109,6 +110,10 @@
 char  WiflyInBuffer[512];           // input buffer used to receive data from WiFly
 int   WiflyInBufferIndex;           // index to wifly input buffer array
 
+
+char ssid[32]   = "UnwiredGrain";
+char passwd[32] = "3211238976";
+char chan[32]   = "0";
    
 /*********************************************************************
  * EXTERNAL VARIABLES
@@ -232,8 +237,8 @@ PT_THREAD(wifly_enter_command_mode_pt(struct pt * pt))
               wiflyInBuffer, 
               Hal_UART_RxBufLen(HAL_UART_PORT_0));
 
-  temp_ptr = wiflyInBuffer;             // trim leading null
-  for (j = 0; j < 16; j++) {            // assuming at most 16 leading null
+  temp_ptr = wiflyInBuffer;                     // trim leading null
+  for (j = 0; j < 16; j++) {                    // assuming at most 16 leading null
     if (*temp_ptr == '\0') 
       temp_ptr++;
     else 
@@ -250,20 +255,35 @@ typedef struct {
   const char *option;
   const char *value;
   const char *response;
-  uint32      timeout;
+  uint16      delay;
 } wifly_send_command_param_t;
 
 static wifly_send_command_param_t wifly_send_command_params;
+
+static void wifly_send_command_prepare(const char *type,
+                                       const char *category,
+                                       const char *option,
+                                       const char *value,
+                                       const char *response,
+                                       uint16 delay) 
+{
+  wifly_send_command_params.type = type;
+  wifly_send_command_params.category = category;
+  wifly_send_command_params.option = option;
+  wifly_send_command_params.value = value;
+  wifly_send_command_params.response = response;
+  wifly_send_command_params.delay = delay;    
+}
 
 static 
 PT_THREAD(wifly_send_command_pt(struct pt * pt))
 {
   static uint32 timestamp;
-  static int index;
-  static uint8 c;
   static wifly_send_command_param_t* param = &wifly_send_command_params;
   
   PT_BEGIN(pt);
+  
+  flushUARTRxBuffer(HAL_UART_PORT_0);
 
   if(param->type != NULL)
   {
@@ -288,39 +308,104 @@ PT_THREAD(wifly_send_command_pt(struct pt * pt))
   HalUARTWrite(HAL_UART_PORT_0, "\r", 1);
 
   if (param->response == NULL) {
+    
+    DELAY_MS(250);      // wait for tx finish and rx flush
+                        // if we do this too soon, the next command may 
+                        // get response of command.
     error = SUCCESS;
     PT_EXIT(pt);
   }
   
   // initialize the receiving buffer
   memset(WiflyInBuffer, '\0', sizeof(WiflyInBuffer));
-  index = 0;
-  timestamp = osal_GetSystemClock();
+  DELAY_MS(param->delay);
   
-  /******************************
-   *    read char until 
-        1 timeout
-        2 end reached. (by >)
-        buffer full (not considered)
-   */
-  while (1) {
+  HalUARTRead(HAL_UART_PORT_0, (uint8*)WiflyInBuffer, Hal_UART_RxBufLen(HAL_UART_PORT_0));
     
-    if (osal_GetSystemClock() - timestamp > param->timeout) {
-      error = FAILURE;          // time out
-      PT_EXIT(pt);
-    }
-    
-    // read rx or block
-    PT_WAIT_UNTIL(pt, HalUARTRead(HAL_UART_PORT_0, &c, 1));
-    
-    if (c == '>')
-      break;
-    
-    WiflyInBuffer[index++] = c;
-  }
-  
   // search for instance of "command_response" within the Rx buffer
   error = (strstr(WiflyInBuffer, param -> response)) ? SUCCESS : FAILURE;
+
+  PT_END(pt);
+}
+
+
+static 
+PT_THREAD(wifly_reconfigure_pt(struct pt * pt))
+{
+  static uint32 timestamp;
+  static struct pt child;
+  
+  PT_BEGIN(pt);
+  
+  /* put module in infrastructure mode using the configuration parameters */
+  PT_SPAWN(pt, &child, wifly_enter_command_mode_pt(&child));
+  if (error) PT_EXIT(pt);
+
+  // leave any auto-joined network
+  wifly_send_command_prepare(ACTION_LEAVE, NULL, NULL, NULL, NULL, 0);
+  PT_SPAWN(pt, &child, wifly_send_command_pt(&child));
+  // if (error) PT_EXIT(pt);
+  
+  // re-program SSID, passphrase, channel from user input
+  wifly_send_command_prepare(SET, WLAN, SSID, ssid, GENERIC_RESPONSE, 500);
+  PT_SPAWN(pt, &child, wifly_send_command_pt(&child));
+  if (error) PT_EXIT(pt);  
+
+  wifly_send_command_prepare(SET, WLAN, PHRASE, passwd, GENERIC_RESPONSE, 500);
+  PT_SPAWN(pt, &child, wifly_send_command_pt(&child));
+  if (error) PT_EXIT(pt);   
+
+  wifly_send_command_prepare(SET, WLAN, CHANNEL, chan, STD_RESPONSE, 500);
+  PT_SPAWN(pt, &child, wifly_send_command_pt(&child));
+  if (error) PT_EXIT(pt);  
+
+  // restore ip parameters
+  wifly_send_command_prepare(SET, IP, DHCP, DHCP_MODE_ON, STD_RESPONSE, 500);
+  PT_SPAWN(pt, &child, wifly_send_command_pt(&child));
+  if (error) PT_EXIT(pt);  
+
+  /* Settng host ip to 0.0.0.0 is a MUST or else the DNS client process
+   * WILL NOT START !!!!!, and the http client demo is dependent on the
+   * dns client process auto starting.
+   */
+  wifly_send_command_prepare(SET, IP, HOST, "0.0.0.0", STD_RESPONSE, 500);
+  PT_SPAWN(pt, &child, wifly_send_command_pt(&child));
+  if (error) PT_EXIT(pt); 
+  
+  // restore remaining module parameters to defaults (those changed by entry into EZConfig mode)
+  // set comm close 0
+  wifly_send_command_prepare(SET, COMM, CLOSE, CLOSE_VALUE, STD_RESPONSE, 500);
+  PT_SPAWN(pt, &child, wifly_send_command_pt(&child));
+  if (error) PT_EXIT(pt);   
+  // set comm open 0
+  wifly_send_command_prepare(SET, COMM, OPEN, OPEN_VALUE, STD_RESPONSE, 500);
+  PT_SPAWN(pt, &child, wifly_send_command_pt(&child));
+  if (error) PT_EXIT(pt);  
+  // set comm remote 0
+  wifly_send_command_prepare(SET, COMM, REMOTE, COMM_REMOTE_VALUE, STD_RESPONSE, 500);
+  PT_SPAWN(pt, &child, wifly_send_command_pt(&child));
+  if (error) PT_EXIT(pt); 
+  // set wlan join 1
+  wifly_send_command_prepare(SET, WLAN, JOIN, JOIN_VALUE, STD_RESPONSE, 500);
+  PT_SPAWN(pt, &child, wifly_send_command_pt(&child));
+  if (error) PT_EXIT(pt); 
+  
+  // set sys iofunc 0x70
+  wifly_send_command_prepare(SET, SYS, IOFUNC, IOFUNC_VALUE, STD_RESPONSE, 500);
+  PT_SPAWN(pt, &child, wifly_send_command_pt(&child));
+  if (error) PT_EXIT(pt); 
+
+  // save the changes
+  wifly_send_command_prepare(FILEIO_SAVE, NULL, NULL, NULL, STD_RESPONSE, 100);
+  PT_SPAWN(pt, &child, wifly_send_command_pt(&child));
+  if (error) PT_EXIT(pt); 
+  
+  // (hard-)reset the module to apply the new settings
+  PT_SPAWN(pt, &child, wifly_hard_reset_pt(&child));
+  
+  // delay after module reset/reboot to allow GPIO4 toggle low-high-low
+  DELAY_MS(250);
+
   PT_END(pt);
 }
 
@@ -335,15 +420,18 @@ PT_THREAD(pt_test1(struct pt * pt) ) {
   PT_SPAWN(pt, &child, wifly_hard_reset_pt(&child));
   if (error) PT_EXIT(pt);
   
+  /**
   PT_SPAWN(pt, &child, wifly_enter_command_mode_pt(&child));
   if (error) PT_EXIT(pt);
   
   osal_memset(&wifly_send_command_params, 0, sizeof(wifly_send_command_params));
   wifly_send_command_params.type = "factory RESET\r";
-  wifly_send_command_params.timeout = 2000000;
+  wifly_send_command_params.timeout = 100;
+  // wifly_send_command_prepare("factory RESET\r", NULL, NULL, NULL, STD_RESPONSE, 100);
   PT_SPAWN(pt, &child, wifly_send_command_pt(&child));
+  if (error) PT_EXIT(pt); **/
   
-  if (error) PT_EXIT(pt);
+  PT_SPAWN(pt, &child, wifly_reconfigure_pt(&child));
   
   PT_END(pt);
 }

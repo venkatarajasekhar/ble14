@@ -135,7 +135,7 @@ typedef struct
 #define SET             "set"
 #define GET             "get"
 #define STATUS_SHOW     "show"
-#define ACTION_$$$      "$$$"       // enter command mode
+#define ACTION_DDD      "$$$"       // enter command mode
 #define ACTION_EXIT     "exit"      // exit command mode
 #define ACTION_JOIN     "join"      // join a WiFi network
 #define ACTION_LEAVE    "leave"     // leave a WiFi network
@@ -189,7 +189,7 @@ typedef struct
 
 
 // Command "Response" Strings
-#define STD_RESPONSE                "2.45"      // all replies must contain WiFly fw version
+#define STD_RESPONSE                "4.00"      // all replies must contain WiFly fw version
 #define GENERIC_RESPONSE            "AOK"
 #define FILE_SAVE_RESPONSE          "Storing in config"
 #define ACTION_EXIT_RESPONSE        "EXIT"
@@ -261,6 +261,7 @@ typedef struct
 /******************************************************************************/
 
 // Module-level APIs
+/**
 void wifly_util_init(void);
 void wifly_util_hardware_reset(void);
 bool wifly_util_enter_command_mode(void);
@@ -274,7 +275,7 @@ bool wifly_util_send_command(
 void wifly_util_config_module_all();
 void wifly_util_active_scan();
 
-void flushWiflyRxUart(int8);
+void flushWiflyRxUart(int8); **/
 
 #endif	/* WIFLY_UTIL_H */
 
