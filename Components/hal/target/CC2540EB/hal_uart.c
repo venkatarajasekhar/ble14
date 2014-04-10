@@ -235,7 +235,7 @@ uint16 HalUARTWrite(uint8 port, uint8 *buf, uint16 len)
 #else
   #if (HAL_UART_DMA == 0) && (HAL_UART_ISR == 0) && (HAL_UART_SPI == 0)
     // UART is not enabled. Do nothing.
-    (void) port;   // unused argument
+    (void) port;  // unused argument
     (void) buf;   // unused argument
     (void) len;   // unused argument
   #endif

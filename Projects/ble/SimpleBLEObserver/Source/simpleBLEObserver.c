@@ -41,6 +41,7 @@
  * INCLUDES
  */
 #include <string.h>
+#include <stdio.h>
 
 #include "bcomdef.h"
 #include "OSAL.h"
@@ -88,17 +89,6 @@
 // TRUE to use white list during discovery
 #define DEFAULT_DISCOVERY_WHITE_LIST          FALSE
 
-#define AFUNC_UNAVAIL                           ((uint8)-2)
-#define AFUNC_BLOCKING                          ((uint8)-1)
-#define ASTATE_FINAL                            (-1)
-
-
-#define PEEK            0
-#define KICK            1
-
-#define OP_AVAIL        0                        
-#define OP_INIT         1
-#define OP_KICK         2
 
 /*********************************************************************
  * TYPEDEFS
@@ -107,13 +97,63 @@
 /*********************************************************************
  * GLOBAL VARIABLES
  */
-char  WiflyInBuffer[512];           // input buffer used to receive data from WiFly
-int   WiflyInBufferIndex;           // index to wifly input buffer array
 
+uint8 tcp_connected = 0;
 
+/** infrastructure mode **/
 char ssid[32]   = "UnwiredGrain";
 char passwd[32] = "3211238976";
 char chan[32]   = "0";
+char iphost[32] = "192.168.1.112";
+
+/** SoftAP mode **/
+char ssidOfAP[20]         = "Microchip";
+char moduleMacAddress[25] = {'\0'};
+char macFormData[150]     = {'\0'};
+char ssidFormData[150]    = {'\0'};
+
+volatile int lll;
+
+/* The Webserver Definitions  - Derrick */
+static uint8 simpleBuf[512];
+static uint8 fileName[64];
+
+static uint16		sbidx = 0;
+volatile int    	parms;
+static uint16      	httpLine = 0;
+
+static uint8 		tinyBuf[32];
+static uint16      	contentLen = 0;
+
+static uint16 		fillingPostData = 0;
+
+
+/* http parser states */
+enum HttpState
+{
+    HTTP_CONN_WAIT,
+    HTTP_CONN_WAIT1,
+    HTTP_CONN_WAIT2,
+    HTTP_CONN_OPEN,
+    HTTP_CONN_CLOSE,
+    HTTP_CONN_CLOSE1,
+};
+
+enum HttpMethod {
+    HTTP_METHOD_GET,
+    HTTP_METHOD_POST,
+    HTTP_METHOD_READ_POST_DATA,
+    HTTP_METHOD_GET_XML,
+    HTTP_METHOD_FORCE_STARTOVER,
+    HTTP_METHOD_ADVANCED_FEATURES
+};
+
+enum HttpState  httpState = HTTP_CONN_WAIT;
+enum HttpMethod httpMethod;
+
+// static void sendPage(unsigned char *s);
+// static void sendPageXML(unsigned char *s);
+// static void sendPageChunks(unsigned char *fmt, ...);
    
 /*********************************************************************
  * EXTERNAL VARIABLES
@@ -150,8 +190,28 @@ static uint8 error;
 
 static halUARTCfg_t uartConfig;
 
-unsigned char wiflyInBuffer[512];
-uint16 wiflyInBufferIndex;
+unsigned char 		wiflyInBuffer[512];
+uint16 				wiflyInBufferIndex;
+static bool			discardUartRX = TRUE;
+static uint16		debugCount = 0;
+
+// typedef void (*halUARTCBack_t) (uint8 port, uint8 event);
+static void uartCB(uint8 port, uint8 event) {
+	
+	uint8 bin[16];
+	
+	switch (event) {
+		case HAL_UART_RX_ABOUT_FULL:
+		
+			//if (discardUartRX) {			
+			//	HalUARTRead(port, bin, 16);
+			//}
+		
+			break;
+		default:
+			break;
+	}
+}
 
 /*********************************************************************
  * LOCAL FUNCTIONS
@@ -163,6 +223,8 @@ static void simpleBLEAddDeviceInfo( uint8 *pAddr, uint8 addrType );
 char *bdAddr2Str ( uint8 *pAddr );
 
 static void hang(){ /** do nothing **/ };
+
+#include "pages.c"
 
 /*********************************************************************
  * PROFILE CALLBACKS
@@ -187,6 +249,130 @@ static void flushUARTRxBuffer(uint8 port) {
   }
 }
 
+typedef struct {
+	unsigned char *s;
+} wifly_sendPage_param_t;
+
+static wifly_sendPage_param_t wifly_sendPage_param;
+
+static
+PT_THREAD(wifly_sendPage_pt(struct pt * pt) )
+{
+	static uint32 timestamp;
+ /*
+    sendString(httpHeaders);
+    sprintf(tinyBuf, "%d\r\n\r\n", strlen(s));
+    sendString(tinyBuf);
+    sendString(s);
+*/
+	PT_BEGIN(pt);
+/**	
+	DELAY_MS(30);
+	putsWiFly((char *)httpHeaders);
+	DELAY_MS(15);
+
+	sprintf((char *)tinyBuf, "%d\r\n\r\n", strlen((const char *)s));
+	putsWiFly((char *)tinyBuf);
+	DELAY_MS(15);
+
+	putsWiFly((char *)s); **/
+	PT_END(pt);
+}
+
+
+void sendPageXML(unsigned char *s)
+{
+ /*
+    sendString(httpHeaders);
+    sprintf(tinyBuf, "%d\r\n\r\n", strlen(s));
+    sendString(tinyBuf);
+    sendString(s);
+*/
+	/**
+      DELAY_MS(30);
+      putsWiFly((char *)xmlHeaders);
+      //ConsolePutString(httpHeaders);
+      putsConsole((char *)xmlHeaders);
+      DELAY_MS(15);
+
+      sprintf((char *)tinyBuf, "%d\r\n\r\n", strlen((const char *)s));
+      putsWiFly((char *)tinyBuf);
+      //ConsolePutString(tinyBuf);
+      putsConsole((char *)tinyBuf);
+      DELAY_MS(15);
+
+      putsWiFly((char *)s);
+      //ConsolePutString(s);
+      putsConsole((char *)s); **/
+}
+
+#if 0
+void sendPageChunks(unsigned char *fmt, ...)
+{
+    va_list ptrToArguments;
+    unsigned char *ptrToArgChars, *sval[MAX_ARGS] = {NULL};
+    int index = 0;
+    int pageLength = 0;
+
+    /* extract each argument one at a time and match with sval pointer array */
+    va_start(ptrToArguments, fmt);
+    
+    for(ptrToArgChars = fmt; *ptrToArgChars; ptrToArgChars++)
+    {
+        if(*ptrToArgChars != '%')
+        {
+            continue;
+        }
+
+        /* fill the array to pointers with the pointers that are passed as args */
+        switch(*++ptrToArgChars)
+        {
+            case 's':
+                sval[index] = va_arg(ptrToArguments, unsigned char *);
+                index++;
+                break;
+            default:
+                break;
+        }
+    }
+    va_end(ap);
+
+    /* preceed each hmtl body with the html standard header */
+    DELAY_MS(30);
+    putsWiFly((char *)httpHeaders);
+    putsConsole((char *)httpHeaders);
+    DELAY_MS(15);
+
+    /* calculate the total size of the hmtl page to be sent */
+    index = 0;
+    while(sval[index] != NULL)
+    {
+        pageLength = pageLength + strlen((const char *)sval[index]);
+        index++;
+    }
+
+    /* calculate the total size of the hmtl page to be sent 
+    sprintf((char *)tinyBuf, "%d\r\n\r\n",
+               strlen((const char *)sval[0]) + strlen((const char *)sval[1]) +
+               strlen((const char *)sval[2]) + strlen((const char *)sval[3]) +
+               strlen((const char *)sval[4]) );  */
+    sprintf((char *)tinyBuf, "%d\r\n\r\n",pageLength);
+    putsWiFly((char *)tinyBuf);
+    putsConsole((char *)tinyBuf);
+    DELAY_MS(15);
+
+    /* send all the individual pieces that make up the page */
+    index = 0;
+    while(sval[index] != NULL)
+    {
+         putsWiFly((char *)sval[index]);
+         putsConsole((char *)sval[index]);
+         index++;
+    }
+
+}
+#endif
+
 /*********************************************************************
 * state machine for asynchronous function: wifly_hardware_reset
 */
@@ -199,12 +385,18 @@ PT_THREAD(wifly_hard_reset_pt(struct pt *pt))
   static uint32 timestamp;
     
   PT_BEGIN(pt);
+  
+  discardUartRX = TRUE;
 
   P1_2 = 0;                                            // Drive Low
   P1DIR |= (1 << 2);        
-  DELAY_MS(50);
+  DELAY_MS(10);
   P1DIR &= ~(1 << 2);                                   // High Z
-  DELAY_MS(100);
+  DELAY_MS(500);
+  
+  discardUartRX = FALSE;
+  debugCount = 0;
+  
   error = CTS_HIGH ? SUCCESS : FAILURE;
   
   PT_END(pt);
@@ -214,6 +406,7 @@ static
 PT_THREAD(wifly_enter_command_mode_pt(struct pt * pt))
 {
   static uint32 timestamp;
+  static uint16 len1, len2;
   
   PT_BEGIN(pt);
   
@@ -233,10 +426,13 @@ PT_THREAD(wifly_enter_command_mode_pt(struct pt * pt))
     PT_EXIT(pt);
   }
 
+  len1 = Hal_UART_RxBufLen(HAL_UART_PORT_0);
+  len2 = 
   HalUARTRead(HAL_UART_PORT_0,                  // read rx buffer
               wiflyInBuffer, 
-              Hal_UART_RxBufLen(HAL_UART_PORT_0));
+              len1);
 
+  
   temp_ptr = wiflyInBuffer;                     // trim leading null
   for (j = 0; j < 16; j++) {                    // assuming at most 16 leading null
     if (*temp_ptr == '\0') 
@@ -317,13 +513,13 @@ PT_THREAD(wifly_send_command_pt(struct pt * pt))
   }
   
   // initialize the receiving buffer
-  memset(WiflyInBuffer, '\0', sizeof(WiflyInBuffer));
+  memset(wiflyInBuffer, '\0', sizeof(wiflyInBuffer));
   DELAY_MS(param->delay);
   
-  HalUARTRead(HAL_UART_PORT_0, (uint8*)WiflyInBuffer, Hal_UART_RxBufLen(HAL_UART_PORT_0));
+  HalUARTRead(HAL_UART_PORT_0, (uint8*)wiflyInBuffer, Hal_UART_RxBufLen(HAL_UART_PORT_0));
     
   // search for instance of "command_response" within the Rx buffer
-  error = (strstr(WiflyInBuffer, param -> response)) ? SUCCESS : FAILURE;
+  error = (strstr(wiflyInBuffer, param -> response)) ? SUCCESS : FAILURE;
 
   PT_END(pt);
 }
@@ -344,14 +540,14 @@ PT_THREAD(wifly_reconfigure_pt(struct pt * pt))
   // leave any auto-joined network
   wifly_send_command_prepare(ACTION_LEAVE, NULL, NULL, NULL, NULL, 0);
   PT_SPAWN(pt, &child, wifly_send_command_pt(&child));
-  // if (error) PT_EXIT(pt);
+  if (error) PT_EXIT(pt);
   
   // re-program SSID, passphrase, channel from user input
-  wifly_send_command_prepare(SET, WLAN, SSID, ssid, GENERIC_RESPONSE, 500);
+  wifly_send_command_prepare(SET, WLAN, SSID, ssid, STD_RESPONSE, 500);
   PT_SPAWN(pt, &child, wifly_send_command_pt(&child));
   if (error) PT_EXIT(pt);  
 
-  wifly_send_command_prepare(SET, WLAN, PHRASE, passwd, GENERIC_RESPONSE, 500);
+  wifly_send_command_prepare(SET, WLAN, PHRASE, passwd, STD_RESPONSE, 500);
   PT_SPAWN(pt, &child, wifly_send_command_pt(&child));
   if (error) PT_EXIT(pt);   
 
@@ -364,41 +560,56 @@ PT_THREAD(wifly_reconfigure_pt(struct pt * pt))
   PT_SPAWN(pt, &child, wifly_send_command_pt(&child));
   if (error) PT_EXIT(pt);  
 
+  // sound like non-sense
   /* Settng host ip to 0.0.0.0 is a MUST or else the DNS client process
    * WILL NOT START !!!!!, and the http client demo is dependent on the
    * dns client process auto starting.
    */
-  wifly_send_command_prepare(SET, IP, HOST, "0.0.0.0", STD_RESPONSE, 500);
+  wifly_send_command_prepare(SET, IP, HOST, iphost, STD_RESPONSE, 500);
   PT_SPAWN(pt, &child, wifly_send_command_pt(&child));
   if (error) PT_EXIT(pt); 
+  
+  // tcp client only
+  wifly_send_command_prepare(SET, IP, "protocol", "0x08", STD_RESPONSE, 500);
+  PT_SPAWN(pt, &child, wifly_send_command_pt(&child));
+  if (error) PT_EXIT(pt);   
+
+  wifly_send_command_prepare(SET, SYS, "autoconn", "5", STD_RESPONSE, 500);
+  PT_SPAWN(pt, &child, wifly_send_command_pt(&child));
+  if (error) PT_EXIT(pt); 
+  
+  // set ip flags 0x6, disable tcp retry if ap lost
+  wifly_send_command_prepare(SET, IP, "flags", "0x6", STD_RESPONSE, 500);
+  PT_SPAWN(pt, &child, wifly_send_command_pt(&child));
+  if (error) PT_EXIT(pt);   
   
   // restore remaining module parameters to defaults (those changed by entry into EZConfig mode)
   // set comm close 0
   wifly_send_command_prepare(SET, COMM, CLOSE, CLOSE_VALUE, STD_RESPONSE, 500);
   PT_SPAWN(pt, &child, wifly_send_command_pt(&child));
-  if (error) PT_EXIT(pt);   
+  // if (error) PT_EXIT(pt);   
   // set comm open 0
   wifly_send_command_prepare(SET, COMM, OPEN, OPEN_VALUE, STD_RESPONSE, 500);
   PT_SPAWN(pt, &child, wifly_send_command_pt(&child));
-  if (error) PT_EXIT(pt);  
+  // if (error) PT_EXIT(pt);  
   // set comm remote 0
   wifly_send_command_prepare(SET, COMM, REMOTE, COMM_REMOTE_VALUE, STD_RESPONSE, 500);
   PT_SPAWN(pt, &child, wifly_send_command_pt(&child));
-  if (error) PT_EXIT(pt); 
+  // if (error) PT_EXIT(pt); 
   // set wlan join 1
   wifly_send_command_prepare(SET, WLAN, JOIN, JOIN_VALUE, STD_RESPONSE, 500);
   PT_SPAWN(pt, &child, wifly_send_command_pt(&child));
-  if (error) PT_EXIT(pt); 
+  // if (error) PT_EXIT(pt); 
   
-  // set sys iofunc 0x70
-  wifly_send_command_prepare(SET, SYS, IOFUNC, IOFUNC_VALUE, STD_RESPONSE, 500);
+  // set sys iofunc 0x50
+  wifly_send_command_prepare(SET, SYS, IOFUNC, "0x50", STD_RESPONSE, 500);
   PT_SPAWN(pt, &child, wifly_send_command_pt(&child));
-  if (error) PT_EXIT(pt); 
+  // if (error) PT_EXIT(pt); 
 
   // save the changes
-  wifly_send_command_prepare(FILEIO_SAVE, NULL, NULL, NULL, STD_RESPONSE, 100);
+  wifly_send_command_prepare(FILEIO_SAVE, NULL, NULL, NULL, STD_RESPONSE, 500);
   PT_SPAWN(pt, &child, wifly_send_command_pt(&child));
-  if (error) PT_EXIT(pt); 
+  // if (error) PT_EXIT(pt); 
   
   // (hard-)reset the module to apply the new settings
   PT_SPAWN(pt, &child, wifly_hard_reset_pt(&child));
@@ -409,33 +620,465 @@ PT_THREAD(wifly_reconfigure_pt(struct pt * pt))
   PT_END(pt);
 }
 
+
+static
+PT_THREAD(wifly_configureAP_pt(struct pt * pt))
+{
+	static struct pt child;
+	static uint32 timestamp;
+	
+	// no idea what is this.
+	// leave PIC24 open-drain pin as output and turn off
+	// let PICTail pull-up resistor pull GPIO5 high
+	// open-drain configuration should be ok while GPIO5 transitions back to default function during SoftAP mode
+    // RN_GPIO5 = 1;
+	
+	PT_BEGIN(pt);
+	
+	// enter command mode
+	PT_SPAWN(pt, &child, wifly_enter_command_mode_pt(&child));
+	if (error) PT_EXIT(pt);
+	
+	// leave the network
+	wifly_send_command_prepare(ACTION_LEAVE, NULL, NULL, NULL, NULL, 500);
+	PT_SPAWN(pt, &child, wifly_send_command_pt(&child));
+	if (error) PT_EXIT(pt);
+	
+	wifly_send_command_prepare(SET, WLAN, JOIN, SAP_NETWORK_AP_MODE, STD_RESPONSE, 500);
+	PT_SPAWN(pt, &child, wifly_send_command_pt(&child));
+	if (error) PT_EXIT(pt);
+
+	// set the wlan channel
+	wifly_send_command_prepare(SET, WLAN, CHANNEL, SAP_NETWORK_CHANNEL, STD_RESPONSE, 500);
+	PT_SPAWN(pt, &child, wifly_send_command_pt(&child));
+	if (error) PT_EXIT(pt);
+	
+	// set the wlan ssid
+	wifly_send_command_prepare(SET, WLAN, SSID, (const char *)ssidOfAP, STD_RESPONSE, 500);
+	PT_SPAWN(pt, &child, wifly_send_command_pt(&child));
+	if (error) PT_EXIT(pt);	
+	
+    // set the wlan passphrase
+	wifly_send_command_prepare(SET, WLAN, PHRASE, SAP_NETWORK_PASS, STD_RESPONSE, 500);
+	PT_SPAWN(pt, &child, wifly_send_command_pt(&child));
+	if (error) PT_EXIT(pt);	
+    
+    // set dhcp mode
+	wifly_send_command_prepare(SET, IP, DHCP, SAP_NETWORK_DHCP_MODE, STD_RESPONSE, 500);
+	PT_SPAWN(pt, &child, wifly_send_command_pt(&child));
+	if (error) PT_EXIT(pt);	
+	
+    // set ip mode
+	wifly_send_command_prepare(SET, IP, ADDRESS, SAP_NETWORK_IP_ADDRESS, STD_RESPONSE, 500);
+	PT_SPAWN(pt, &child, wifly_send_command_pt(&child));
+	if (error) PT_EXIT(pt);	
+
+    // set netmaske
+	wifly_send_command_prepare(SET, IP, NETMASK, SAP_NETWORK_SUBNET_MASK, STD_RESPONSE, 500);
+	PT_SPAWN(pt, &child, wifly_send_command_pt(&child));
+	if (error) PT_EXIT(pt);	
+	
+    // set gateway
+	wifly_send_command_prepare(SET, IP, GATEWAY, SAP_NETWORK_IP_ADDRESS, STD_RESPONSE, 500);
+	PT_SPAWN(pt, &child, wifly_send_command_pt(&child));
+	if (error) PT_EXIT(pt);	
+
+    // set tcp port open string, what is this?
+	wifly_send_command_prepare(SET, COMM, OPEN, TCPPORT_OPEN_STRING, STD_RESPONSE, 500);
+	PT_SPAWN(pt, &child, wifly_send_command_pt(&child));
+	if (error) PT_EXIT(pt);	
+
+    // set tcp port close string, what is this?
+	wifly_send_command_prepare(SET, COMM, CLOSE, TCPPORT_CLOSE_STRING, STD_RESPONSE, 500);
+	PT_SPAWN(pt, &child, wifly_send_command_pt(&child));
+	if (error) PT_EXIT(pt);		
+
+	// set tcp port hello string
+	wifly_send_command_prepare(SET, COMM, REMOTE, TCPPORT_HELLO_STRING, STD_RESPONSE, 500);
+	PT_SPAWN(pt, &child, wifly_send_command_pt(&child));
+	if (error) PT_EXIT(pt);	
+
+	// set io func (0x50? may be different from common mode, what is supposed to be 0x70)
+	wifly_send_command_prepare(SET, "sys", "iofunc", "0x50", STD_RESPONSE, 500);
+	PT_SPAWN(pt, &child, wifly_send_command_pt(&child));
+	if (error) PT_EXIT(pt);	
+
+	// save the settings
+	wifly_send_command_prepare(FILEIO_SAVE, NULL, NULL, NULL, STD_RESPONSE, 500);
+	PT_SPAWN(pt, &child, wifly_send_command_pt(&child));
+	if (error) PT_EXIT(pt);	
+	
+    PT_SPAWN(pt, &child, wifly_hard_reset_pt(&child));
+	if (error) PT_EXIT(pt);
+	
+	DELAY_MS(1000);
+	
+	flushUARTRxBuffer(HAL_UART_PORT_0);
+			 
+	PT_END(pt);
+}
+
+
+
+uint8 httpProcessPostString (char *sourceString, char *patternString, char *stringValue)
+{
+    uint8 indx;
+    char  *partialString;
+
+    if( (partialString = (char *)strstr((const char *)sourceString, (const char *)patternString)) )
+    {
+        while(*partialString != '=')
+        {
+            ++partialString;
+        }
+        ++partialString;
+        indx = 0;
+        while(*partialString != '&')
+        {
+            stringValue[indx++] = *partialString++;
+        }
+        stringValue[indx] = '\0';
+        return(1);
+    }
+    else
+    {
+        return(0);
+    }
+}
+
+
+
+static 
+PT_THREAD(wifly_httpParseLine_pt(struct pt * pt))
+{
+	static struct pt child;
+	static uint32 timestamp;
+	
+	PT_BEGIN(pt);
+	
+    if (fillingPostData)
+    {
+        httpProcessPostString ((char *)simpleBuf, (char *)"SSID=", ssid);
+		httpProcessPostString ((char *)simpleBuf, (char *)"password=", passwd);
+		httpProcessPostString ((char *)simpleBuf, (char *)"Channel=", chan);
+
+        /* send the close-out page back to the browser */
+        sendPage(page2);
+        DELAY_MS(1000);
+
+        /* the work of the EZConfig process is completed and what remains is to
+         * reconfigure the module back to its normal state and let it try to
+         * associate to its freashly savd network parameters
+         */
+         
+        /* The HTTP client operates in polling mode so restore that mode by
+         * disabling the UART interrupts. No more data into fifo */
+        // IEC0bits.U1RXIE = 0;
+        // IEC4bits.U1ERIE = 0;
+
+		flushUARTRxBuffer(HAL_UART_PORT_0);
+        // flushWiflyRxUart(10);  // flush out uart for 40 milliseconds
+        // IFS0bits.U1RXIF = 0;
+        // IFS4bits.U1ERIF = 0;
+        // fifoInit();           // reset fifo indexes.
+
+
+        /* because the device will not operate in Polling mode until it rebooted
+         * the normal wifly driver functions cannot be used here.    Must just send
+         * commands directly to the uart Tx, before switching back to  polling mode
+         * after module reset
+         */
+        // RN_GPIO5 = 0;
+        
+        // need to do these at a minimum before using wifly_util_xxx_APIs
+		DELAY_MS(350);
+		HalUARTWrite(HAL_UART_PORT_0, "$$$", strlen("$$$"));
+		DELAY_MS(1000);
+
+		HalUARTWrite(HAL_UART_PORT_0, "set comm close 0\r\n", strlen("set comm close 0\r\n"));
+        putsWiFly("set comm close 0");
+        putWiFly('\r');
+        DELAY_MS(40);
+        putsWiFly("set comm open 0");
+        putWiFly('\r');
+        DELAY_MS(40);
+        putsWiFly("set sys iofunc 0x70");
+        putWiFly('\r');
+        DELAY_MS(40);
+        putsWiFly("save");
+        putWiFly('\r');
+        DELAY_MS(40);
+        putsWiFly("reboot");
+        putWiFly('\r');
+        DELAY_MS(40);
+        
+        /* flush out the uart because bytes from previous communications are
+         * still residing in it (up to 4 bytes according to specs
+         */
+
+        DELAY_MS(500);
+        // U1STAbits.OERR  = 0;
+        // flushWiflyRxUart(10);  // flush out uart for 100 milliseconds
+		flushUARTRxBuffer(HAL_UART_PORT_0);
+		
+		
+
+        /* tell the module it can now send data */
+        // PIC_RTS = 1;
+        // U1STAbits.OERR  = 0;
+
+		PT_SPAWN(pt, &child, wifly_reconfigure_pt(&child));
+
+    }
+
+
+    if (httpLine == 0)
+    {
+        if(strstr( (const char *)simpleBuf, "GET /scanresults"))
+        {
+            httpMethod = HTTP_METHOD_GET_XML;
+        }
+
+        else if(strstr( (const char *)simpleBuf, "GET /index"))
+        {
+            httpMethod = HTTP_METHOD_GET;
+        }
+
+        else if(strstr( (const char *)simpleBuf, "GET /advance"))
+        {
+            httpMethod = HTTP_METHOD_ADVANCED_FEATURES;
+        }
+
+        else if (sscanf((char *)simpleBuf, "GET %63s", (char *)fileName))
+        {
+            httpMethod = HTTP_METHOD_FORCE_STARTOVER;
+        }
+        else if (sscanf((char *)simpleBuf, "POST %63s", (char *)fileName))
+        {
+            httpMethod = HTTP_METHOD_POST;
+        }
+    }
+    ++httpLine;     // Increment the line number
+
+    lll = strlen((char *)simpleBuf);
+    if (lll == 0)               // End of http block
+    {
+        httpLine = 0;           // reset line at end of block
+        if(httpMethod == HTTP_METHOD_GET_XML )
+        {
+            // sendPageXML((unsigned char *)&xmlLines);
+            httpMethod = HTTP_METHOD_FORCE_STARTOVER;
+        }
+
+        else if (httpMethod == HTTP_METHOD_ADVANCED_FEATURES)
+        {
+            sendPageChunks((unsigned char *)"%s%s%s%s%s",advanced_part1,macFormData,advanced_part2,ssidFormData,advanced_part3);
+            httpMethod = HTTP_METHOD_FORCE_STARTOVER;
+        }
+
+        else if (httpMethod == HTTP_METHOD_GET)
+        {
+            sendPage((unsigned char *)page4);
+            httpMethod = HTTP_METHOD_FORCE_STARTOVER;
+        }
+        else if (httpMethod == HTTP_METHOD_POST)
+        {
+            fillingPostData = 1;
+        }
+    }
+    else
+    {
+        sscanf((char *)simpleBuf,"Content-Length: %d", &contentLen);
+    }
+	
+	PT_END(pt);
+}
+
+
+
+PT_THREAD(wifly_EZConfigTasks_pt(struct pt * pt))
+{
+	static struct pt child;
+	static uint32 timestamp;
+    
+	static uint8 c;
+
+	PT_BEGIN(pt);
+	
+    while (Hal_UART_RxBufLen(HAL_UART_PORT_0) && HalUARTRead(HAL_UART_PORT_0, &c, 1))
+	{		
+        if (HTTP_CONN_WAIT == httpState) {
+        	if (c == '^') {
+            	httpState = HTTP_CONN_WAIT1; // received ^
+            }
+        } 
+		else if ( HTTP_CONN_WAIT1 == httpState ) {
+            if (c == 'o') {
+            	httpState = HTTP_CONN_WAIT2; // received ^o
+            }
+			else
+				httpState = HTTP_CONN_WAIT;  // received ^?
+		}
+		else if ( HTTP_CONN_WAIT2 == httpState ) {
+        	if (c == '^')
+            {
+				httpState = HTTP_CONN_OPEN;  // received ^o^
+				sbidx = 0;
+				httpLine = 0;
+			}
+            else
+            	httpState = HTTP_CONN_WAIT;  // received ^o?
+		}
+		else if ( HTTP_CONN_OPEN == httpState ) {
+                if (c == '^')
+                {
+                    httpState = HTTP_CONN_CLOSE;  // received ^
+                }
+                else if (c == '\n')  /* the end of each line received after open */
+                {
+                    simpleBuf[sbidx-1] = '\0';
+					
+                    PT_SPAWN(pt, &child, wifly_httpParseLine_pt(&child));
+					
+                    sbidx = 0;                  // Get ready for next line
+                }
+                else
+                {
+                    /* in the middle of each line received after open */
+                    if (sbidx < (int)sizeof(simpleBuf)-1)
+                    {
+                        simpleBuf[sbidx++] = c;
+                    }
+
+                    if (fillingPostData && (sbidx >= contentLen) )
+                    {
+                        simpleBuf[sbidx] = '\0';
+						
+                        PT_SPAWN(pt, &child, wifly_httpParseLine_pt(&child));
+						
+                        fillingPostData = 0;
+                        sbidx = 0;
+                    }
+                }
+		}
+		else if ( HTTP_CONN_CLOSE == httpState ) {
+                if (c == 'c')
+                    httpState = HTTP_CONN_CLOSE1; // received ^c
+                else
+                    httpState = HTTP_CONN_OPEN;  // received ^?
+        }
+		else if ( HTTP_CONN_CLOSE1 == httpState ) {
+			
+                if (c == '^')
+                {
+                    httpState = HTTP_CONN_WAIT; // received ^c^
+
+                    /* derrick added */
+                    sbidx           = 0;
+                    httpLine        = 0;
+                    fillingPostData = 0;
+                }
+                else
+                    httpState = HTTP_CONN_OPEN;  // received ^c?
+		}
+
+    }
+	
+	PT_END(pt);
+}
+
+
+
 static struct pt pt_test1_pt;
 static 
 PT_THREAD(pt_test1(struct pt * pt) ) {
   
-  static struct pt child;
+  	static struct pt child;
+  	static uint32 timestamp;
   
-  PT_BEGIN(pt);
+  	PT_BEGIN(pt);
   
-  PT_SPAWN(pt, &child, wifly_hard_reset_pt(&child));
-  if (error) PT_EXIT(pt);
-  
-  /**
-  PT_SPAWN(pt, &child, wifly_enter_command_mode_pt(&child));
-  if (error) PT_EXIT(pt);
-  
-  osal_memset(&wifly_send_command_params, 0, sizeof(wifly_send_command_params));
-  wifly_send_command_params.type = "factory RESET\r";
-  wifly_send_command_params.timeout = 100;
-  // wifly_send_command_prepare("factory RESET\r", NULL, NULL, NULL, STD_RESPONSE, 100);
-  PT_SPAWN(pt, &child, wifly_send_command_pt(&child));
-  if (error) PT_EXIT(pt); **/
-  
-  PT_SPAWN(pt, &child, wifly_reconfigure_pt(&child));
-  
-  PT_END(pt);
-}
+	// Power WiFi Module
+	P1SEL &= ~(1 << 3);		// enable GPIO on P1.3
+  	P1_3 = 1;				// drive high
+  	P1DIR |= (1 << 3);		// output
+	
+	// FORCE WAKEUP
+	P1SEL &= ~(1 << 1); 	// enable GPIO on P1.1
+	P1_1 = 1;				// drive high
+	P1DIR |= (1 << 1);		// output
+	
+	// WiFi MODULE GPIO 4, P0.0
+	P0SEL &= ~(1 << 0);
+	P0DIR &= ~(1 << 0);		// input
+	
+	// WiFi MODULE GPIO 5, P0.6 not really used yet
+	P0SEL &= ~(1 << 6);
+	P0_6 = 0;				// drive low
+	P0DIR |= (1 << 6);		// output
+	
+	// WiFi MODULE GPIO 6, P0.1
+	P0SEL &= ~(1 << 1);
+	P0DIR &= ~(1 << 1);		// input
+	
+	
+	
+	DELAY_MS(1000);
+	
+	while (1) {
 
+		 do {	// associate ap
+			
+			PT_SPAWN(pt, &child, wifly_hard_reset_pt(&child));
+			DELAY_MS(1000);
+
+			PT_SPAWN(pt, &child, wifly_hard_reset_pt(&child));
+			DELAY_MS(1000);
+			
+			PT_SPAWN(pt, &child, wifly_hard_reset_pt(&child));
+			DELAY_MS(1000);	
+
+			PT_SPAWN(pt, &child, wifly_reconfigure_pt(&child));  
+			DELAY_MS(1000);
+			
+			if (1 == P0_0)
+				break;
+			
+			DELAY_MS(30000);
+			
+		}  while (0 == P0_0);
+		
+		while (1 == P0_0) { // wait for tcp connection
+			
+			PT_WAIT_UNTIL(pt, 1 == P0_1);
+			
+			GAPObserverRole_StartDiscovery( DEFAULT_DISCOVERY_MODE,
+            	DEFAULT_DISCOVERY_ACTIVE_SCAN,
+                DEFAULT_DISCOVERY_WHITE_LIST);  
+			
+			PT_WAIT_UNTIL(pt, (0 == P0_1) || (0 == P0_0));
+			
+			GAPObserverRole_CancelDiscovery();
+		}
+	} 
+	
+	
+	
+
+	// PT_SPAWN(pt, &child, wifly_hard_reset_pt(&child));
+	// DELAY_MS(1000);
+	
+  	// PT_SPAWN(pt, &child, wifly_configureAP_pt(&child));
+  	// DELAY_MS(1000);	// for 10s
+
+	// PT_SPAWN(pt, &child, wifly_hard_reset_pt(&child));
+	// DELAY_MS(1000);
+  	
+	// PT_SPAWN(pt, &child, wifly_reconfigure_pt(&child));	
+	// DELAY_MS(1000);
+  
+  	PT_END(pt);
+}
 
 /*********************************************************************
  * PUBLIC FUNCTIONS
@@ -483,13 +1126,15 @@ void SimpleBLEObserver_Init( uint8 task_id )
   uartConfig.tx.maxBufSize = 256;
   uartConfig.idleTimeout = 6;
   uartConfig.intEnable = TRUE;
-  uartConfig.callBackFunc = 0;
+  uartConfig.callBackFunc = uartCB;
   
   HalUARTOpen(HAL_UART_PORT_0, &uartConfig);
   
   // Setup a delayed profile startup
   osal_set_event( simpleBLETaskId, START_DEVICE_EVT );
   osal_set_event( simpleBLETaskId, SELF_MESSAGE_EVT );
+  
+  
   
   PT_INIT(&pt_test1_pt);
 }
@@ -562,7 +1207,7 @@ static void simpleBLEObserver_ProcessOSALMsg( osal_event_hdr_t *pMsg )
   switch ( pMsg->event )
   {
     case KEY_CHANGE:
-      simpleBLEObserver_HandleKeys( ((keyChange_t *)pMsg)->state, ((keyChange_t *)pMsg)->keys );
+      // simpleBLEObserver_HandleKeys( ((keyChange_t *)pMsg)->state, ((keyChange_t *)pMsg)->keys );
       break;
 
     case GATT_MSG_EVENT:
@@ -662,29 +1307,19 @@ static void simpleBLEObserverEventCB( gapObserverRoleEvent_t *pEvent )
 
     case GAP_DEVICE_INFO_EVENT:
       {
-        simpleBLEAddDeviceInfo( pEvent->deviceInfo.addr, pEvent->deviceInfo.addrType );
+		  
+		  HalUARTWrite(HAL_UART_PORT_0, bdAddr2Str( pEvent->deviceInfo.addr ), 14);
+		  HalUARTWrite(HAL_UART_PORT_0, "\r\n", 2);
+        // simpleBLEAddDeviceInfo( pEvent->deviceInfo.addr, pEvent->deviceInfo.addrType );
       }
       break;
       
     case GAP_DEVICE_DISCOVERY_EVENT:
       {
-        // discovery complete
-        simpleBLEScanning = FALSE;
-
-        // Copy results
-        simpleBLEScanRes = pEvent->discCmpl.numDevs;
-        osal_memcpy( simpleBLEDevList, pEvent->discCmpl.pDevList,
-                     (sizeof( gapDevRec_t ) * pEvent->discCmpl.numDevs) );
-        
-        LCD_WRITE_STRING_VALUE( "Devices Found", simpleBLEScanRes,
-                                10, HAL_LCD_LINE_1 );
-        if ( simpleBLEScanRes > 0 )
-        {
-          LCD_WRITE_STRING( "<- To Select", HAL_LCD_LINE_2 );
-        }
-
-        // initialize scan index to last device
-        simpleBLEScanIdx = simpleBLEScanRes;
+		  // do it again
+			GAPObserverRole_StartDiscovery( DEFAULT_DISCOVERY_MODE,
+            	DEFAULT_DISCOVERY_ACTIVE_SCAN,
+                DEFAULT_DISCOVERY_WHITE_LIST);  	
       }
       break;
       

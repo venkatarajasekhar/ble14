@@ -92,7 +92,7 @@ SUBSTITUTE GOODS, TECHNOLOGY, SERVICES, OR ANY CLAIMS BY THIRD PARTIES
 // *****************************************************************************
 // *****************************************************************************
 extern char  OutString[128];               // console/lcd display output buffer
-extern char  WiflyInBuffer[512];           // input buffer used to receive strings from WiFly
+// extern char  WiflyInBuffer[512];           // input buffer used to receive strings from WiFly
 extern char  WiflyOutBuffer[128];          // output buffer used to send strings to WiFly
 
 extern uint8      accessPoints[20][25];
@@ -204,7 +204,7 @@ typedef struct
 
 // "sys" option values
 #define PRINT_VALUE         "0"
-#define IOFUNC_VALUE        "0x70"
+#define IOFUNC_VALUE        "0x50"
 
 // "wlan" option values
 #define JOIN_VALUE          "1"                 // duplicate setting as "JOIN_MODE_TRY_ASSOC" below
