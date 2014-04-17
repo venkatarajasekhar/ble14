@@ -184,10 +184,10 @@
 #define HAL_UART_MSECS_TO_TICKS    33
 
 #if !defined HAL_UART_ISR_RX_MAX
-#define HAL_UART_ISR_RX_MAX        128
+#define HAL_UART_ISR_RX_MAX        2048
 #endif
 #if !defined HAL_UART_ISR_TX_MAX
-#define HAL_UART_ISR_TX_MAX        HAL_UART_ISR_RX_MAX
+#define HAL_UART_ISR_TX_MAX        128 //HAL_UART_ISR_RX_MAX
 #endif
 #if !defined HAL_UART_ISR_HIGH
 #define HAL_UART_ISR_HIGH         (HAL_UART_ISR_RX_MAX / 2 - 16)

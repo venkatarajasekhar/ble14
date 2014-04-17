@@ -92,7 +92,7 @@ SUBSTITUTE GOODS, TECHNOLOGY, SERVICES, OR ANY CLAIMS BY THIRD PARTIES
 // *****************************************************************************
 // *****************************************************************************
 extern char  OutString[128];               // console/lcd display output buffer
-extern char  WiflyInBuffer[512];           // input buffer used to receive strings from WiFly
+// extern char  WiflyInBuffer[512];           // input buffer used to receive strings from WiFly
 extern char  WiflyOutBuffer[128];          // output buffer used to send strings to WiFly
 
 extern uint8      accessPoints[20][25];
@@ -138,7 +138,7 @@ typedef struct
 #define ACTION_DDD      "$$$"       // enter command mode
 #define ACTION_EXIT     "exit"      // exit command mode
 #define ACTION_JOIN     "join"      // join a WiFi network
-#define ACTION_LEAVE    "leave"     // leave a WiFi network
+#define ACTION_LEAVE    "leave\r"     // leave a WiFi network
 #define FILEIO_SAVE     "save"      // save configuration settings to the default config file
 
 // Command Category Keywords
