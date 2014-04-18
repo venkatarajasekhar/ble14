@@ -3,6 +3,7 @@ Documents
 _iss
 *~
 *.pdf
+*.dep
 Exe
 List
 Obj
