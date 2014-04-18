@@ -604,8 +604,6 @@ PT_THREAD(wifly_reconfigure_pt(struct pt * pt))
   // re-program SSID, passphrase, channel from user input
   wifly_send_command_prepare(SET, WLAN, SSID, ssid, STD_RESPONSE, 500);
   PT_SPAWN(pt, &child, wifly_send_command_pt(&child));
-<
-<<<<<< HEAD
   //if (error) PT_EXIT(pt);  
 
   wifly_send_command_prepare(SET, WLAN, PHRASE, passwd, STD_RESPONSE, 500);
@@ -615,18 +613,6 @@ PT_THREAD(wifly_reconfigure_pt(struct pt * pt))
   wifly_send_command_prepare(SET, WLAN, CHANNEL, chan, STD_RESPONSE, 500);
   PT_SPAWN(pt, &child, wifly_send_command_pt(&child));
   //if (error) PT_EXIT(pt);  
-=======
-  if (error) PT_EXIT(pt);  
-
-  wifly_send_command_prepare(SET, WLAN, PHRASE, passwd, STD_RESPONSE, 500);
-  PT_SPAWN(pt, &child, wifly_send_command_pt(&child));
-  if (error) PT_EXIT(pt);   
-
-  wifly_send_command_prepare(SET, WLAN, CHANNEL, chan, STD_RESPONSE, 500);
-  PT_SPAWN(pt, &child, wifly_send_command_pt(&child));
-  if (error) PT_EXIT(pt);  
->>>>>>> play
-
   // restore ip parameters
   wifly_send_command_prepare(SET, IP, DHCP, DHCP_MODE_ON, STD_RESPONSE, 500);
   PT_SPAWN(pt, &child, wifly_send_command_pt(&child));
