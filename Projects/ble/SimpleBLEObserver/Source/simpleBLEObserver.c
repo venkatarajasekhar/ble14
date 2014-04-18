@@ -104,7 +104,7 @@ uint8 tcp_connected = 0;
 char ssid[32]   = "UnwiredGrain";
 char passwd[32] = "3211238976";
 char chan[32]   = "0";
-char iphost[32] = "192.168.1.112";
+char iphost[32] = "192.168.1.120";
 
 /** SoftAP mode **/
 char ssidOfAP[20]         = "Microchip";
@@ -386,16 +386,16 @@ PT_THREAD(wifly_hard_reset_pt(struct pt *pt))
     
   PT_BEGIN(pt);
   
-  discardUartRX = TRUE;
+  // discardUartRX = TRUE;
 
   P1_2 = 0;                                            // Drive Low
   P1DIR |= (1 << 2);        
-  DELAY_MS(10);
+  DELAY_MS(50);
   P1DIR &= ~(1 << 2);                                   // High Z
-  DELAY_MS(500);
+  DELAY_MS(50);
   
-  discardUartRX = FALSE;
-  debugCount = 0;
+  // discardUartRX = FALSE;
+  // debugCount = 0;
   
   error = CTS_HIGH ? SUCCESS : FAILURE;
   
@@ -410,9 +410,10 @@ PT_THREAD(wifly_enter_command_mode_pt(struct pt * pt))
   
   PT_BEGIN(pt);
   
+  DELAY_MS(500);
   flushUARTRxBuffer(HAL_UART_PORT_0);           // flush rx
   
-  DELAY_MS(350);                                // 250ms at least
+  // DELAY_MS(350);                                // 250ms at least
   HalUARTWrite(HAL_UART_PORT_0, "$$$", 3);      // write token
   DELAY_MS(350);                                // 250ms at least
   
@@ -426,11 +427,11 @@ PT_THREAD(wifly_enter_command_mode_pt(struct pt * pt))
     PT_EXIT(pt);
   }
 
-  len1 = Hal_UART_RxBufLen(HAL_UART_PORT_0);
-  len2 = 
-  HalUARTRead(HAL_UART_PORT_0,                  // read rx buffer
-              wiflyInBuffer, 
-              len1);
+  	len1 = Hal_UART_RxBufLen(HAL_UART_PORT_0);
+	len2 = 
+	HalUARTRead(HAL_UART_PORT_0,                  // read rx buffer
+	            wiflyInBuffer, 
+	            len1);
 
   
   temp_ptr = wiflyInBuffer;                     // trim leading null
@@ -514,7 +515,7 @@ PT_THREAD(wifly_send_command_pt(struct pt * pt))
   
   // initialize the receiving buffer
   memset(wiflyInBuffer, '\0', sizeof(wiflyInBuffer));
-  DELAY_MS(param->delay);
+  DELAY_MS(param->delay + 500);
   
   HalUARTRead(HAL_UART_PORT_0, (uint8*)wiflyInBuffer, Hal_UART_RxBufLen(HAL_UART_PORT_0));
     
@@ -579,6 +580,8 @@ PT_THREAD(wifly_reconfigure_pt(struct pt * pt))
   if (error) PT_EXIT(pt); 
   
   // set ip flags 0x6, disable tcp retry if ap lost
+  // use TCP_NODELAY
+  // no retry
   wifly_send_command_prepare(SET, IP, "flags", "0x6", STD_RESPONSE, 500);
   PT_SPAWN(pt, &child, wifly_send_command_pt(&child));
   if (error) PT_EXIT(pt);   
@@ -587,29 +590,34 @@ PT_THREAD(wifly_reconfigure_pt(struct pt * pt))
   // set comm close 0
   wifly_send_command_prepare(SET, COMM, CLOSE, CLOSE_VALUE, STD_RESPONSE, 500);
   PT_SPAWN(pt, &child, wifly_send_command_pt(&child));
-  // if (error) PT_EXIT(pt);   
+  if (error) PT_EXIT(pt);   
   // set comm open 0
   wifly_send_command_prepare(SET, COMM, OPEN, OPEN_VALUE, STD_RESPONSE, 500);
   PT_SPAWN(pt, &child, wifly_send_command_pt(&child));
-  // if (error) PT_EXIT(pt);  
+  if (error) PT_EXIT(pt);  
   // set comm remote 0
   wifly_send_command_prepare(SET, COMM, REMOTE, COMM_REMOTE_VALUE, STD_RESPONSE, 500);
   PT_SPAWN(pt, &child, wifly_send_command_pt(&child));
-  // if (error) PT_EXIT(pt); 
+  if (error) PT_EXIT(pt); 
   // set wlan join 1
   wifly_send_command_prepare(SET, WLAN, JOIN, JOIN_VALUE, STD_RESPONSE, 500);
   PT_SPAWN(pt, &child, wifly_send_command_pt(&child));
-  // if (error) PT_EXIT(pt); 
+  if (error) PT_EXIT(pt); 
   
   // set sys iofunc 0x50
   wifly_send_command_prepare(SET, SYS, IOFUNC, "0x50", STD_RESPONSE, 500);
   PT_SPAWN(pt, &child, wifly_send_command_pt(&child));
-  // if (error) PT_EXIT(pt); 
+  if (error) PT_EXIT(pt); 
+  
+  // shorten tcp connect timer, what the fuck is it???
+  wifly_send_command_prepare(SET, "ip", "tcp-mode", "0x3", STD_RESPONSE, 500);
+  PT_SPAWN(pt, &child, wifly_send_command_pt(&child));
+  if (error) PT_EXIT(pt);
 
   // save the changes
   wifly_send_command_prepare(FILEIO_SAVE, NULL, NULL, NULL, STD_RESPONSE, 500);
   PT_SPAWN(pt, &child, wifly_send_command_pt(&child));
-  // if (error) PT_EXIT(pt); 
+  if (error) PT_EXIT(pt); 
   
   // (hard-)reset the module to apply the new settings
   PT_SPAWN(pt, &child, wifly_hard_reset_pt(&child));
@@ -1030,12 +1038,6 @@ PT_THREAD(pt_test1(struct pt * pt) ) {
 		 do {	// associate ap
 			
 			PT_SPAWN(pt, &child, wifly_hard_reset_pt(&child));
-			DELAY_MS(1000);
-
-			PT_SPAWN(pt, &child, wifly_hard_reset_pt(&child));
-			DELAY_MS(1000);
-			
-			PT_SPAWN(pt, &child, wifly_hard_reset_pt(&child));
 			DELAY_MS(1000);	
 
 			PT_SPAWN(pt, &child, wifly_reconfigure_pt(&child));  
@@ -1133,8 +1135,6 @@ void SimpleBLEObserver_Init( uint8 task_id )
   // Setup a delayed profile startup
   osal_set_event( simpleBLETaskId, START_DEVICE_EVT );
   osal_set_event( simpleBLETaskId, SELF_MESSAGE_EVT );
-  
-  
   
   PT_INIT(&pt_test1_pt);
 }

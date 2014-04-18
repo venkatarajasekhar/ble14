@@ -12,7 +12,7 @@
           
           
           
-        <Column0>208</Column0><Column1>23</Column1><Column2>29</Column2><Column3>0</Column3></ColumnWidths>
+        <Column0>188</Column0><Column1>23</Column1><Column2>29</Column2><Column3>0</Column3></ColumnWidths>
       </Workspace>
       <Build>
         
@@ -41,7 +41,7 @@
         
         
       <ColumnWidth0>440</ColumnWidth0><ColumnWidth1>62</ColumnWidth1><ColumnWidth2>754</ColumnWidth2></Find-All-Declarations>
-    <Debug-Log><ColumnWidth0>18</ColumnWidth0><ColumnWidth1>1224</ColumnWidth1></Debug-Log><Disassembly><ShowCodeCoverage>1</ShowCodeCoverage><ShowInstrProfiling>1</ShowInstrProfiling><col-names><item>Disassembly</item><item>_I0</item></col-names><col-widths><item>500</item><item>20</item></col-widths><DisasmHistory/></Disassembly></Static>
+    <Debug-Log><ColumnWidth0>18</ColumnWidth0><ColumnWidth1>1224</ColumnWidth1></Debug-Log><Disassembly><col-names><item>Disassembly</item><item>_I0</item></col-names><col-widths><item>500</item><item>20</item></col-widths><DisasmHistory/><ShowCodeCoverage>1</ShowCodeCoverage><ShowInstrProfiling>1</ShowInstrProfiling></Disassembly></Static>
     <Windows>
       
       
@@ -53,7 +53,7 @@
             <Factory>Workspace</Factory>
             <Session>
               
-            <NodeDict><ExpandedNode>SimpleBLEObserver</ExpandedNode><ExpandedNode>SimpleBLEObserver/APP</ExpandedNode><ExpandedNode>SimpleBLEObserver/HAL</ExpandedNode><ExpandedNode>SimpleBLEObserver/MODULES</ExpandedNode></NodeDict></Session>
+            <NodeDict><ExpandedNode>SimpleBLEObserver</ExpandedNode><ExpandedNode>SimpleBLEObserver/APP</ExpandedNode><ExpandedNode>SimpleBLEObserver/HAL</ExpandedNode><ExpandedNode>SimpleBLEObserver/HAL/Target</ExpandedNode><ExpandedNode>SimpleBLEObserver/HAL/Target/CC2540EB</ExpandedNode><ExpandedNode>SimpleBLEObserver/HAL/Target/CC2540EB/Config</ExpandedNode><ExpandedNode>SimpleBLEObserver/HAL/Target/CC2540EB/Drivers</ExpandedNode><ExpandedNode>SimpleBLEObserver/HAL/Target/CC2540EB/Includes</ExpandedNode><ExpandedNode>SimpleBLEObserver/MODULES</ExpandedNode></NodeDict></Session>
           </Tab>
         </Tabs>
         
@@ -97,14 +97,14 @@
       
       
       
-    <Pane><Tab><Factory>TextEditor</Factory><Filename>$WS_DIR$\..\..\..\..\Components\osal\common\OSAL.c</Filename><XPos>0</XPos><YPos>0</YPos><SelStart>0</SelStart><SelEnd>0</SelEnd><XPos2>0</XPos2><YPos2>1101</YPos2><SelStart2>30229</SelStart2><SelEnd2>30229</SelEnd2></Tab><Tab><Factory>TextEditor</Factory><Filename>$WS_DIR$\..\..\..\..\Components\hal\target\CC2540EB\_hal_uart_isr.c</Filename><XPos>0</XPos><YPos>0</YPos><SelStart>0</SelStart><SelEnd>0</SelEnd><XPos2>0</XPos2><YPos2>439</YPos2><SelStart2>14421</SelStart2><SelEnd2>14421</SelEnd2></Tab><Tab><Factory>TextEditor</Factory><Filename>$WS_DIR$\..\..\..\..\Components\hal\target\CC2540EB\hal_uart.c</Filename><XPos>0</XPos><YPos>0</YPos><SelStart>0</SelStart><SelEnd>0</SelEnd><XPos2>0</XPos2><YPos2>298</YPos2><SelStart2>9418</SelStart2><SelEnd2>9418</SelEnd2></Tab><Tab><Factory>TextEditor</Factory><Filename>$WS_DIR$\..\..\..\..\Components\hal\common\hal_drivers.c</Filename><XPos>0</XPos><YPos>0</YPos><SelStart>0</SelStart><SelEnd>0</SelEnd><XPos2>0</XPos2><YPos2>259</YPos2><SelStart2>8839</SelStart2><SelEnd2>8839</SelEnd2></Tab><Tab><Factory>TextEditor</Factory><Filename>$WS_DIR$\..\..\..\..\Components\hal\target\CC2540EB\hal_key.c</Filename><XPos>0</XPos><YPos>0</YPos><SelStart>0</SelStart><SelEnd>0</SelEnd><XPos2>0</XPos2><YPos2>189</YPos2><SelStart2>6996</SelStart2><SelEnd2>6996</SelEnd2></Tab><Tab><Factory>TextEditor</Factory><Filename>$WS_DIR$\..\Source\simpleBLEObserver.c</Filename><XPos>0</XPos><YPos>0</YPos><SelStart>0</SelStart><SelEnd>0</SelEnd><XPos2>0</XPos2><YPos2>946</YPos2><SelStart2>31691</SelStart2><SelEnd2>31691</SelEnd2></Tab><Tab><Factory>TextEditor</Factory><Filename>$WS_DIR$\..\Source\wifly_util.h</Filename><XPos>0</XPos><YPos>0</YPos><SelStart>0</SelStart><SelEnd>0</SelEnd><XPos2>0</XPos2><YPos2>190</YPos2><SelStart2>8330</SelStart2><SelEnd2>8330</SelEnd2></Tab><Tab><Factory>TextEditor</Factory><Filename>$WS_DIR$\..\Source\OSAL_SimpleBLEObserver.c</Filename><XPos>0</XPos><YPos>0</YPos><SelStart>0</SelStart><SelEnd>0</SelEnd><XPos2>0</XPos2><YPos2>0</YPos2><SelStart2>0</SelStart2><SelEnd2>0</SelEnd2></Tab><Tab><Factory>TextEditor</Factory><Filename>$WS_DIR$\..\Source\simpleBLEObserver_Main.c</Filename><XPos>0</XPos><YPos>0</YPos><SelStart>0</SelStart><SelEnd>0</SelEnd><XPos2>0</XPos2><YPos2>59</YPos2><SelStart2>3564</SelStart2><SelEnd2>3564</SelEnd2></Tab><ActiveTab>8</ActiveTab></Pane><ActivePane>0</ActivePane><Sizes><Pane><X>1000000</X><Y>1000000</Y></Pane></Sizes><SplitMode>1</SplitMode></Editor>
+    <Pane><Tab><Factory>TextEditor</Factory><Filename>$WS_DIR$\..\Source\simpleBLEObserver.c</Filename><XPos>0</XPos><YPos>0</YPos><SelStart>0</SelStart><SelEnd>0</SelEnd><XPos2>0</XPos2><YPos2>1106</YPos2><SelStart2>33745</SelStart2><SelEnd2>33755</SelEnd2></Tab><ActiveTab>0</ActiveTab><Tab><Factory>TextEditor</Factory><Filename>$WS_DIR$\..\Source\wifly_util.h</Filename><XPos>0</XPos><YPos>0</YPos><SelStart>0</SelStart><SelEnd>0</SelEnd><XPos2>0</XPos2><YPos2>139</YPos2><SelStart2>6522</SelStart2><SelEnd2>6522</SelEnd2></Tab><Tab><Factory>TextEditor</Factory><Filename>$WS_DIR$\..\..\..\..\Components\hal\target\CC2540EB\_hal_uart_dma.c</Filename><XPos>0</XPos><YPos>0</YPos><SelStart>0</SelStart><SelEnd>0</SelEnd><XPos2>0</XPos2><YPos2>823</YPos2><SelStart2>27841</SelStart2><SelEnd2>27841</SelEnd2></Tab><Tab><Factory>TextEditor</Factory><Filename>$WS_DIR$\..\Source\simpleBLEObserver_Main.c</Filename><XPos>0</XPos><YPos>0</YPos><SelStart>0</SelStart><SelEnd>0</SelEnd><XPos2>0</XPos2><YPos2>80</YPos2><SelStart2>3029</SelStart2><SelEnd2>3029</SelEnd2></Tab></Pane><ActivePane>0</ActivePane><Sizes><Pane><X>1000000</X><Y>1000000</Y></Pane></Sizes><SplitMode>1</SplitMode></Editor>
     <Positions>
       
       
       
       
       
-    <Top><Row0><Sizes><Toolbar-01379338><key>iaridepm.enu1</key></Toolbar-01379338></Sizes></Row0><Row1><Sizes/></Row1><Row2><Sizes/></Row2></Top><Left><Row0><Sizes><Wnd0><Rect><Top>-2</Top><Left>-2</Left><Bottom>556</Bottom><Right>280</Right><x>-2</x><y>-2</y><xscreen>118</xscreen><yscreen>196</yscreen><sizeHorzCX>92188</sizeHorzCX><sizeHorzCY>267760</sizeHorzCY><sizeVertCX>220313</sizeVertCX><sizeVertCY>762295</sizeVertCY></Rect></Wnd0></Sizes></Row0></Left><Right><Row0><Sizes/></Row0></Right><Bottom><Row0><Sizes><Wnd1><Rect><Top>-2</Top><Left>-2</Left><Bottom>132</Bottom><Right>1282</Right><x>-2</x><y>-2</y><xscreen>1284</xscreen><yscreen>134</yscreen><sizeHorzCX>1003125</sizeHorzCX><sizeHorzCY>183060</sizeHorzCY><sizeVertCX>92188</sizeVertCX><sizeVertCY>267760</sizeVertCY></Rect></Wnd1></Sizes></Row0></Bottom><Float><Sizes/></Float></Positions>
+    <Top><Row0><Sizes><Toolbar-01379338><key>iaridepm.enu1</key></Toolbar-01379338></Sizes></Row0><Row1><Sizes/></Row1><Row2><Sizes/></Row2></Top><Left><Row0><Sizes><Wnd0><Rect><Top>-2</Top><Left>-2</Left><Bottom>593</Bottom><Right>276</Right><x>-2</x><y>-2</y><xscreen>118</xscreen><yscreen>196</yscreen><sizeHorzCX>92188</sizeHorzCX><sizeHorzCY>267760</sizeHorzCY><sizeVertCX>217188</sizeVertCX><sizeVertCY>812842</sizeVertCY></Rect></Wnd0></Sizes></Row0></Left><Right><Row0><Sizes/></Row0></Right><Bottom><Row0><Sizes><Wnd1><Rect><Top>-2</Top><Left>-2</Left><Bottom>95</Bottom><Right>1282</Right><x>-2</x><y>-2</y><xscreen>1284</xscreen><yscreen>97</yscreen><sizeHorzCX>1003125</sizeHorzCX><sizeHorzCY>132514</sizeHorzCY><sizeVertCX>92188</sizeVertCX><sizeVertCY>267760</sizeVertCY></Rect></Wnd1></Sizes></Row0></Bottom><Float><Sizes/></Float></Positions>
   </Desktop>
 </Workspace>
 
