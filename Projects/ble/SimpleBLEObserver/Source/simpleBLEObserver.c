@@ -444,16 +444,16 @@ PT_THREAD(wifly_hard_reset_pt(struct pt *pt))
     
   PT_BEGIN(pt);
   
-  discardUartRX = TRUE;
+  // discardUartRX = TRUE;
 
   P1_2 = 0;                                            // Drive Low
   P1DIR |= (1 << 2);        
-  DELAY_MS(100);
+  DELAY_MS(50);
   P1DIR &= ~(1 << 2);                                   // High Z
-  DELAY_MS(500);
+  DELAY_MS(50);
   
-  discardUartRX = FALSE;
-  debugCount = 0;
+  // discardUartRX = FALSE;
+  // debugCount = 0;
   
   error = CTS_HIGH ? SUCCESS : FAILURE;
   
@@ -468,9 +468,10 @@ PT_THREAD(wifly_enter_command_mode_pt(struct pt * pt))
   
   PT_BEGIN(pt);
   
+  DELAY_MS(350);
   flushUARTRxBuffer(HAL_UART_PORT_0);           // flush rx
   
-  DELAY_MS(350);                                // 250ms at least
+  // DELAY_MS(350);                                // 250ms at least
   HalUARTWrite(HAL_UART_PORT_0, "$$$", 3);      // write token
   DELAY_MS(350);                                // 250ms at least
   
@@ -484,11 +485,11 @@ PT_THREAD(wifly_enter_command_mode_pt(struct pt * pt))
     PT_EXIT(pt);
   }
 
-  len1 = Hal_UART_RxBufLen(HAL_UART_PORT_0);
-  len2 = 
-  HalUARTRead(HAL_UART_PORT_0,                  // read rx buffer
-              wiflyInBuffer, 
-              len1);
+  	len1 = Hal_UART_RxBufLen(HAL_UART_PORT_0);
+	len2 = 
+	HalUARTRead(HAL_UART_PORT_0,                  // read rx buffer
+	            wiflyInBuffer, 
+	            len1);
 
   
   temp_ptr = wiflyInBuffer;                     // trim leading null
@@ -603,6 +604,8 @@ PT_THREAD(wifly_reconfigure_pt(struct pt * pt))
   // re-program SSID, passphrase, channel from user input
   wifly_send_command_prepare(SET, WLAN, SSID, ssid, STD_RESPONSE, 500);
   PT_SPAWN(pt, &child, wifly_send_command_pt(&child));
+<
+<<<<<< HEAD
   //if (error) PT_EXIT(pt);  
 
   wifly_send_command_prepare(SET, WLAN, PHRASE, passwd, STD_RESPONSE, 500);
@@ -612,6 +615,17 @@ PT_THREAD(wifly_reconfigure_pt(struct pt * pt))
   wifly_send_command_prepare(SET, WLAN, CHANNEL, chan, STD_RESPONSE, 500);
   PT_SPAWN(pt, &child, wifly_send_command_pt(&child));
   //if (error) PT_EXIT(pt);  
+=======
+  if (error) PT_EXIT(pt);  
+
+  wifly_send_command_prepare(SET, WLAN, PHRASE, passwd, STD_RESPONSE, 500);
+  PT_SPAWN(pt, &child, wifly_send_command_pt(&child));
+  if (error) PT_EXIT(pt);   
+
+  wifly_send_command_prepare(SET, WLAN, CHANNEL, chan, STD_RESPONSE, 500);
+  PT_SPAWN(pt, &child, wifly_send_command_pt(&child));
+  if (error) PT_EXIT(pt);  
+>>>>>>> play
 
   // restore ip parameters
   wifly_send_command_prepare(SET, IP, DHCP, DHCP_MODE_ON, STD_RESPONSE, 500);
@@ -1353,6 +1367,11 @@ void ProcessTimeEvent(void)
 	}
 }
 
+=======
+  PT_INIT(&pt_test1_pt);
+}
+
+>>>>>>> play
 /*********************************************************************
  * @fn      SimpleBLEObserver_ProcessEvent
  *
