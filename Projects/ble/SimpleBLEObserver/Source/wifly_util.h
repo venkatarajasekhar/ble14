@@ -138,7 +138,7 @@ typedef struct
 #define ACTION_DDD      "$$$"       // enter command mode
 #define ACTION_EXIT     "exit"      // exit command mode
 #define ACTION_JOIN     "join"      // join a WiFi network
-#define ACTION_LEAVE    "leave\r"     // leave a WiFi network
+#define ACTION_LEAVE    "leave"     // leave a WiFi network
 #define FILEIO_SAVE     "save"      // save configuration settings to the default config file
 
 // Command Category Keywords
@@ -204,7 +204,7 @@ typedef struct
 
 // "sys" option values
 #define PRINT_VALUE         "0"
-#define IOFUNC_VALUE        "0x70"
+#define IOFUNC_VALUE        "0x50"
 
 // "wlan" option values
 #define JOIN_VALUE          "1"                 // duplicate setting as "JOIN_MODE_TRY_ASSOC" below

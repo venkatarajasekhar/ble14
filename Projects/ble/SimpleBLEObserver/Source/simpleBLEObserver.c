@@ -43,6 +43,7 @@
 #include <string.h>
 #include <stdio.h>
 
+
 #include "bcomdef.h"
 #include "OSAL.h"
 #include "OSAL_PwrMgr.h"
@@ -59,6 +60,16 @@
 
 #include "pt.h"
 #include "wifly_util.h"
+
+
+/*********************************
+
+ switch off this macro for demo or production
+
+**********************************/
+#define STATE_DEBUG				FALSE
+#define DEBUG_BUF_SIZE			256
+char debug_buf[DEBUG_BUF_SIZE];
 
 #define DELAY_MS(milli)         timestamp = osal_GetSystemClock(); \
                                 PT_WAIT_UNTIL(pt, osal_GetSystemClock() - timestamp > milli);
@@ -90,6 +101,19 @@
 #define DEFAULT_DISCOVERY_WHITE_LIST          FALSE
 
 
+//the period time 1000ms
+#define PERIODTIME        10000
+
+//the count of no ping at disconnect state
+#define DIS_NP_LIMIT      30   
+//the count of no ping at connect state
+#define CONN_NP_LIMIT     10
+
+#define PONG      1
+#define NOPONG    0
+
+#define SENDPING "PING\r\n"
+
 /*********************************************************************
  * TYPEDEFS
  */
@@ -100,28 +124,29 @@
 
 uint8 tcp_connected = 0;
 
-//char ssid[32]   = "fanqh";
+///** infrastructure mode **/
+//char ssid[32]   = "UnwiredGrain";
 //char passwd[32] = "3211238976";
 //char chan[32]   = "0";
-//char iphost[32] = "192.168.1.126";
-
-///** infrastructure mode **/
-char ssid[32]   = "UnwiredGrain";
-char passwd[32] = "3211238976";
-char chan[32]   = "0";
-char iphost[32] = "192.168.1.76";
+//char iphost[32] = "192.168.1.124";
 
 /** infrastructure mode **/
 //char ssid[32]   = "OVERTECH";
 //char passwd[32] = "overtechoffice2013";
 //char chan[32]   = "0";
-//char iphost[32] = "192.168.1.114";
+//char iphost[32] = "192.168.1.171";
+
+//char ssid[32]   = "MTC-OFFICE-TEST";
+char ssid[32]   = "MTC-OFFICE-10";
+char passwd[32] = "MATON123";
+char chan[32]   = "0";
+char iphost[32] = "192.168.10.20";
 
 
-//char ssid[32]   = "MTC-OFFICE-10";
-//char passwd[32] = "MATON123";
+//char ssid[32]   = "AndroidAP";
+//char passwd[32] = "oumd9531";
 //char chan[32]   = "0";
-//char iphost[32] = "192.168.10.20";
+//char iphost[32] = "192.168.43.99";
 
 /** SoftAP mode **/
 char ssidOfAP[20]         = "Microchip";
@@ -144,6 +169,17 @@ static uint16      	contentLen = 0;
 
 static uint16 		fillingPostData = 0;
 
+static uint16 NoPongCount = 0;
+static bool ConnectState =  false;
+
+
+enum WIFISTATE
+{
+    DISCONNECT,
+    CONNECT,
+};
+
+enum WIFISTATE  WifiState= DISCONNECT;
 
 /* http parser states */
 enum HttpState
@@ -211,6 +247,7 @@ unsigned char 		wiflyInBuffer[512];
 uint16 				wiflyInBufferIndex;
 static bool			discardUartRX = TRUE;
 static uint16		debugCount = 0;
+static uint16 NP_Counter = 0;
 
 // typedef void (*halUARTCBack_t) (uint8 port, uint8 event);
 static void uartCB(uint8 port, uint8 event) {
@@ -242,6 +279,7 @@ char *bdAddr2Str ( uint8 *pAddr );
 static void hang(){ /** do nothing **/ };
 
 char *DCtoHEX( uint8 *pAddr );
+void DisconnectEntry(void);
 
 #include "pages.c"
 
@@ -392,6 +430,7 @@ void sendPageChunks(unsigned char *fmt, ...)
 }
 #endif
 
+
 /*********************************************************************
 * state machine for asynchronous function: wifly_hardware_reset
 */
@@ -409,7 +448,7 @@ PT_THREAD(wifly_hard_reset_pt(struct pt *pt))
 
   P1_2 = 0;                                            // Drive Low
   P1DIR |= (1 << 2);        
-  DELAY_MS(10);
+  DELAY_MS(100);
   P1DIR &= ~(1 << 2);                                   // High Z
   DELAY_MS(500);
   
@@ -554,7 +593,7 @@ PT_THREAD(wifly_reconfigure_pt(struct pt * pt))
   
   /* put module in infrastructure mode using the configuration parameters */
   PT_SPAWN(pt, &child, wifly_enter_command_mode_pt(&child));
-  if (error) PT_EXIT(pt);
+  // if (error) PT_EXIT(pt);
 
   // leave any auto-joined network
   wifly_send_command_prepare(ACTION_LEAVE, NULL, NULL, NULL, NULL, 0);
@@ -593,19 +632,15 @@ PT_THREAD(wifly_reconfigure_pt(struct pt * pt))
   PT_SPAWN(pt, &child, wifly_send_command_pt(&child));
   //if (error) PT_EXIT(pt);   
 
-  wifly_send_command_prepare(SET, SYS, "autoconn", "5", STD_RESPONSE, 500);
+  wifly_send_command_prepare(SET, SYS, "autoconn", "10", STD_RESPONSE, 500);
   PT_SPAWN(pt, &child, wifly_send_command_pt(&child));
   //if (error) PT_EXIT(pt); 
   
   // set ip flags 0x6, disable tcp retry if ap lost
-  wifly_send_command_prepare(SET, IP, "flags", "0x6", STD_RESPONSE, 500);
-  PT_SPAWN(pt, &child, wifly_send_command_pt(&child));
+//  wifly_send_command_prepare(SET, IP, "flags", "0x6", STD_RESPONSE, 500);
+//  PT_SPAWN(pt, &child, wifly_send_command_pt(&child));
   //if (error) PT_EXIT(pt);   
-  
-  //the time join in ap 
-    wifly_send_command_prepare(SET, OPT, JOINTMR, "5000", STD_RESPONSE, 500);
-  PT_SPAWN(pt, &child, wifly_send_command_pt(&child));
-  //if (error) PT_EXIT(pt);  
+
   
   // restore remaining module parameters to defaults (those changed by entry into EZConfig mode)
   // set comm close 0
@@ -623,6 +658,10 @@ PT_THREAD(wifly_reconfigure_pt(struct pt * pt))
   // set wlan join 1
   wifly_send_command_prepare(SET, WLAN, JOIN, JOIN_VALUE, STD_RESPONSE, 500);
   PT_SPAWN(pt, &child, wifly_send_command_pt(&child));
+  
+    // set the length of time to wait for join ap
+  wifly_send_command_prepare(SET, "opt", "jointmr", "3000", STD_RESPONSE, 500);
+  PT_SPAWN(pt, &child, wifly_send_command_pt(&child));
   // if (error) PT_EXIT(pt); 
   
   // set sys iofunc 0x50
@@ -633,6 +672,8 @@ PT_THREAD(wifly_reconfigure_pt(struct pt * pt))
   // save the changes
   wifly_send_command_prepare(FILEIO_SAVE, NULL, NULL, NULL, STD_RESPONSE, 500);
   PT_SPAWN(pt, &child, wifly_send_command_pt(&child));
+  
+  
   // if (error) PT_EXIT(pt); 
   
   // (hard-)reset the module to apply the new settings
@@ -1016,6 +1057,7 @@ PT_THREAD(wifly_EZConfigTasks_pt(struct pt * pt))
 static struct pt pt_test1_pt;
 static 
 PT_THREAD(pt_test1(struct pt * pt) ) {
+
   
   	static struct pt child;
   	static uint32 timestamp;
@@ -1034,9 +1076,7 @@ PT_THREAD(pt_test1(struct pt * pt) ) {
 	
 	// WiFi MODULE GPIO 4, P0.0
 	P0SEL &= ~(1 << 0);
-   // P0INP |= (1<<0);
 	P0DIR &= ~(1 << 0);		// input
-    
 	
 	// WiFi MODULE GPIO 5, P0.6 not really used yet
 	P0SEL &= ~(1 << 6);
@@ -1045,9 +1085,7 @@ PT_THREAD(pt_test1(struct pt * pt) ) {
 	
 	// WiFi MODULE GPIO 6, P0.1
 	P0SEL &= ~(1 << 1);
-  //  P0INP |= (1<<1);
 	P0DIR &= ~(1 << 1);		// input
-    
 	
 	
 	// p1_0 drive led1 deafaut 1 turn off led1
@@ -1063,55 +1101,49 @@ PT_THREAD(pt_test1(struct pt * pt) ) {
 	
 	
 	DELAY_MS(1000);
+			
+	PT_SPAWN(pt, &child, wifly_hard_reset_pt(&child));
+	DELAY_MS(1000);
+
+	/**
+			PT_SPAWN(pt, &child, wifly_hard_reset_pt(&child));
+			DELAY_MS(1000);
+			
+			PT_SPAWN(pt, &child, wifly_hard_reset_pt(&child));
+			DELAY_MS(1000);	 **/
+
+	PT_SPAWN(pt, &child, wifly_reconfigure_pt(&child));  
+	DELAY_MS(1000);		
 	
-	while (1) {
-
-		 do {	// associate ap
-			
-			PT_SPAWN(pt, &child, wifly_hard_reset_pt(&child));
-			DELAY_MS(1000);
-
-			PT_SPAWN(pt, &child, wifly_hard_reset_pt(&child));
-			DELAY_MS(1000);
-			
-			PT_SPAWN(pt, &child, wifly_hard_reset_pt(&child));
-			DELAY_MS(1000);	
-
-			PT_SPAWN(pt, &child, wifly_reconfigure_pt(&child));  
-			DELAY_MS(1000);
-			
-						
-			if (1 == P0_0)
-				break;
-			
-			DELAY_MS(30000);
-			
-		}  while (0 == P0_0);
+	//	start time
+	osal_start_reload_timer( simpleBLETaskId, TIMER1_EVT, PERIODTIME );	
+	flushUARTRxBuffer(HAL_UART_PORT_0);
+	DisconnectEntry();
 		
-		while (1 == P0_0) { // wait for tcp connection
-			
-			
-			P1_0 = 1;				// turn off led1
-			P0_7 = 0;				// turn on led2
-			
-			PT_WAIT_UNTIL(pt, 1 == P0_1);
-			
-			P1_0 = 0;				// turn on led1
-			P0_7 = 0;				// turn on led1
-			
-			
-			GAPObserverRole_StartDiscovery( DEFAULT_DISCOVERY_MODE,
-            	DEFAULT_DISCOVERY_ACTIVE_SCAN,
-                DEFAULT_DISCOVERY_WHITE_LIST);  
-			
-			PT_WAIT_UNTIL(pt, (0 == P0_1) || (0 == P0_0));
-			
-			P1_0 = 0;				// turn on led1
-			P0_7 = 1;				// turn on led1
-			
-			GAPObserverRole_CancelDiscovery();
-		}
-	} 
+//		while (1 == P0_0) { // wait for tcp connection
+//			
+//			
+//			P1_0 = 1;				// turn off led1
+//			P0_7 = 0;				// turn on led2
+//			
+//			PT_WAIT_UNTIL(pt, 1 == P0_1);
+//			
+//			P1_0 = 0;				// turn on led1
+//			P0_7 = 0;				// turn on led1
+//			
+//			
+//			GAPObserverRole_StartDiscovery( DEFAULT_DISCOVERY_MODE,
+//            	DEFAULT_DISCOVERY_ACTIVE_SCAN,
+//                DEFAULT_DISCOVERY_WHITE_LIST);  
+//			
+//			PT_WAIT_UNTIL(pt, (0 == P0_1) || (0 == P0_0));
+//			
+//			P1_0 = 0;				// turn on led1
+//			P0_7 = 1;				// turn on led1
+//			
+//			GAPObserverRole_CancelDiscovery();
+//		}
+//	} 
 	
 	
 	
@@ -1190,6 +1222,137 @@ void SimpleBLEObserver_Init( uint8 task_id )
   PT_INIT(&pt_test1_pt);
 }
 
+void ConnectEntry(void)
+{
+	NP_Counter = 0;
+	GAPObserverRole_StartDiscovery( DEFAULT_DISCOVERY_MODE,
+                                      DEFAULT_DISCOVERY_ACTIVE_SCAN,
+                                      DEFAULT_DISCOVERY_WHITE_LIST );
+
+	if (STATE_DEBUG) {
+		sprintf(debug_buf, "C Enter, state is %d\r\n", WifiState);
+		HalUARTWrite(HAL_UART_PORT_0, (uint8*)debug_buf, strlen(debug_buf));
+	}	
+}
+
+void ConnectExit(void)
+{
+	GAPObserverRole_CancelDiscovery();	
+	
+	if (STATE_DEBUG) {
+		sprintf(debug_buf, "C Exit, state is %d\r\n", WifiState);
+		HalUARTWrite(HAL_UART_PORT_0, (uint8*)debug_buf, strlen(debug_buf));
+	}	
+}
+
+void DisconnectEntry(void)
+{
+	NP_Counter = 0;
+	
+	if (STATE_DEBUG) {
+		sprintf(debug_buf, "D Enter\r\n");
+		HalUARTWrite(HAL_UART_PORT_0, (uint8*)debug_buf, strlen(debug_buf));
+	}		
+}
+void DisconnectExit(void)
+{
+
+	if (STATE_DEBUG) {
+		sprintf(debug_buf, "D Exit, state is %d \r\n", WifiState);
+		HalUARTWrite(HAL_UART_PORT_0, (uint8*)debug_buf, strlen(debug_buf));		
+	}		
+}
+
+
+
+void ProcessTimeEvent(void)
+{
+    uint8 response = NOPONG;
+	uint16 len = 0;
+	
+	if(WifiState==CONNECT)
+	{
+			P1_0 = 0;				// turn on led1
+    		P0_7 = 0;				// turn on led1	
+	}
+	else
+	{
+			P1_0 = 1;				// turn on led1
+			P0_7 = 0;				// turn on led1
+	}
+	
+	HalUARTWrite(HAL_UART_PORT_0, SENDPING, strlen(SENDPING));
+	
+	len = Hal_UART_RxBufLen(HAL_UART_PORT_0);
+    if (len) {
+		memset(wiflyInBuffer, '\0', sizeof(wiflyInBuffer));
+    	len = HalUARTRead(HAL_UART_PORT_0, (uint8*)wiflyInBuffer, len);
+	
+    	if( len && strstr((char const *)wiflyInBuffer, "PONG") ) {
+			response = PONG;
+		}
+	}
+
+	if (STATE_DEBUG) {	
+		sprintf(debug_buf, "before: e: %s, st: %d, cnt: %d\r\n", (response == PONG ? "PONG" : "NOPONG"), WifiState, NP_Counter);
+		HalUARTWrite(HAL_UART_PORT_0, debug_buf, strlen(debug_buf));
+	}
+	
+	switch(response)
+	{
+		case PONG:
+			
+			if(WifiState==DISCONNECT)
+			{
+				DisconnectExit();  
+				WifiState = CONNECT;
+				ConnectEntry();
+			}
+			else /* CONNECT */
+			{
+				NP_Counter = 0;
+			}
+			
+			break;
+			
+		case NOPONG:
+			
+			if(WifiState==CONNECT)
+			{
+				if(NP_Counter > CONN_NP_LIMIT)
+				{
+					ConnectExit();
+					WifiState = DISCONNECT;
+					DisconnectEntry();
+					
+				}
+				else
+					NP_Counter++;
+			}
+			else if(WifiState==DISCONNECT)
+			{
+				if(NP_Counter > DIS_NP_LIMIT)
+				{
+					HAL_SYSTEM_RESET();//REBOOT SYSTEM
+				}
+				else
+					NP_Counter++;
+			}
+			break;
+		
+		default:
+			HAL_SYSTEM_RESET();//REBOOT SYSTEM
+			break;
+		
+	}
+  
+	if (STATE_DEBUG) {
+		
+		sprintf(debug_buf, "after : e: %s, st: %d, cnt: %d\r\n\r\n", (response == PONG ? "PONG" : "NOPONG"), WifiState, NP_Counter);
+		HalUARTWrite(HAL_UART_PORT_0, debug_buf, strlen(debug_buf));
+	}
+}
+
 /*********************************************************************
  * @fn      SimpleBLEObserver_ProcessEvent
  *
@@ -1231,6 +1394,14 @@ uint16 SimpleBLEObserver_ProcessEvent( uint8 task_id, uint16 events )
 
     return ( events ^ START_DEVICE_EVT );
   }
+  
+  if ( events & TIMER1_EVT )
+  {
+    // process the envent 
+	ProcessTimeEvent();
+    return ( events ^ TIMER1_EVT );
+  }
+  
   if ( events & SELF_MESSAGE_EVT )
   {
     if ( pt_test1(&pt_test1_pt) ) {
@@ -1358,23 +1529,31 @@ static void simpleBLEObserverEventCB( gapObserverRoleEvent_t *pEvent )
 
     case GAP_DEVICE_INFO_EVENT:
       {
-		  
-		  HalUARTWrite(HAL_UART_PORT_0, bdAddr2Str( pEvent->deviceInfo.addr ), 14);
-		  //HalUARTWrite(HAL_UART_PORT_0, "\r\n", 2);
-        // simpleBLEAddDeviceInfo( pEvent->deviceInfo.addr, pEvent->deviceInfo.addrType );
-		  HalUARTWrite(HAL_UART_PORT_0,(unsigned char*)DCtoHEX((uint8*) &pEvent->deviceInfo.rssi ), 4);
-          
-         // HalUARTWrite(HAL_UART_PORT_0, (unsigned char*)&pEvent->deviceInfo.rssi, 1);
-          HalUARTWrite(HAL_UART_PORT_0, "\r\n", 2);
+		
+		  if (STATE_DEBUG) {
+			  HalUARTWrite(HAL_UART_PORT_0, ".", 1);
+		  }
+		  else {
+			HalUARTWrite(HAL_UART_PORT_0, bdAddr2Str( pEvent->deviceInfo.addr ), 14);
+			//HalUARTWrite(HAL_UART_PORT_0, "\r\n", 2);
+			// simpleBLEAddDeviceInfo( pEvent->deviceInfo.addr, pEvent->deviceInfo.addrType );
+			HalUARTWrite(HAL_UART_PORT_0,(unsigned char*)DCtoHEX((uint8*) &pEvent->deviceInfo.rssi ), 4);
+			  
+			// HalUARTWrite(HAL_UART_PORT_0, (unsigned char*)&pEvent->deviceInfo.rssi, 1);
+			HalUARTWrite(HAL_UART_PORT_0, "\r\n", 2);
+		  }
       }
       break;
       
     case GAP_DEVICE_DISCOVERY_EVENT:
       {
-		  // do it again
+		  	// do it again
+		  if(WifiState==CONNECT)
+		  {
 			GAPObserverRole_StartDiscovery( DEFAULT_DISCOVERY_MODE,
             	DEFAULT_DISCOVERY_ACTIVE_SCAN,
-                DEFAULT_DISCOVERY_WHITE_LIST);  	
+            	DEFAULT_DISCOVERY_WHITE_LIST);  	
+		  }
       }
       break;
       
