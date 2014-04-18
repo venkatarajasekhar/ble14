@@ -1353,11 +1353,7 @@ void ProcessTimeEvent(void)
 	}
 }
 
-=======
-  PT_INIT(&pt_test1_pt);
-}
 
->>>>>>> play
 /*********************************************************************
  * @fn      SimpleBLEObserver_ProcessEvent
  *
