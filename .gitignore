@@ -4,6 +4,7 @@ _iss
 *~
 *.pdf
 *.dep
+*.orig
 Exe
 List
 Obj
