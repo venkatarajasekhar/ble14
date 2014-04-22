@@ -474,6 +474,7 @@
           <state>$PROJ_DIR$\..\..\Include</state>
           <state>$PROJ_DIR$\..\..\Profiles\Roles</state>
           <state>$PROJ_DIR$\..\..\Profiles\SimpleProfile</state>
+          <state>$PROJ_DIR$\..\..\..\..\Components\\pt-1.4</state>
         </option>
         <option>
           <name>CCStdIncCheck</name>
