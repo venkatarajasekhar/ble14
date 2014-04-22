@@ -1363,7 +1363,6 @@
           <state>HAL_LCD=FALSE</state>
           <state>HAL_LED=FALSE</state>
           <state>HAL_UART=TRUE</state>
-          <state>HAL_UART_DMA=1</state>
         </option>
         <option>
           <name>CCPreprocFile</name>
@@ -1583,7 +1582,7 @@
         <option>
           <name>CCOptStrategy</name>
           <version>0</version>
-          <state>1</state>
+          <state>2</state>
         </option>
         <option>
           <name>CCOptLevelSlave</name>
