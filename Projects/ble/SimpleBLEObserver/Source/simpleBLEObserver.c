@@ -448,9 +448,9 @@ PT_THREAD(wifly_hard_reset_pt(struct pt *pt))
 
   P1_2 = 0;                                            // Drive Low
   P1DIR |= (1 << 2);        
-  DELAY_MS(50);
+  DELAY_MS(100);
   P1DIR &= ~(1 << 2);                                   // High Z
-  DELAY_MS(50);
+  DELAY_MS(100);
   
   // discardUartRX = FALSE;
   // debugCount = 0;
@@ -468,10 +468,10 @@ PT_THREAD(wifly_enter_command_mode_pt(struct pt * pt))
   
   PT_BEGIN(pt);
   
-  DELAY_MS(350);
+ // DELAY_MS(350);
   flushUARTRxBuffer(HAL_UART_PORT_0);           // flush rx
   
-  // DELAY_MS(350);                                // 250ms at least
+  DELAY_MS(350);                                // 250ms at least
   HalUARTWrite(HAL_UART_PORT_0, "$$$", 3);      // write token
   DELAY_MS(350);                                // 250ms at least
   

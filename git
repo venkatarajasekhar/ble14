@@ -1,0 +1,187 @@
+commit c499c8c8f216631881f299e2c72c52211de5414a
+Author: fanqh <fanqinghua@actnova.com>
+Date:   Tue Apr 22 14:40:17 2014 +0800
+
+    add a path in option of include directiries
+
+commit 81a5722b043985b7c5e8a6ec8e3f4c1c1e538d88
+Merge: 8c50ced b5681f2
+Author: matianfu <matianfu@gmail.com>
+Date:   Tue Apr 22 14:15:11 2014 +0800
+
+    merged fanqh_play again.
+
+commit b5681f22bb3851bbd23372447b9ccd0bc3714055
+Author: fanqh <fanqinghua@actnova.com>
+Date:   Tue Apr 22 12:01:05 2014 +0800
+
+    nothing to commit
+
+commit 8c50ced9a63505c96354ea2bdd39722f1733d60a
+Author: matianfu <matianfu@gmail.com>
+Date:   Sat Apr 19 04:36:13 2014 +0800
+
+    fix another unfished merge flaws.
+
+commit e44a8887276d7818fbf55aad66639a81cbf9f34d
+Author: matianfu <matianfu@gmail.com>
+Date:   Sat Apr 19 04:31:05 2014 +0800
+
+    fix unfinished merge.
+
+commit 43db59991e4f8626a6fa839c1db18659b140d7f2
+Merge: fc59a8d 831fa84
+Author: matianfu <matianfu@gmail.com>
+Date:   Sat Apr 19 04:20:27 2014 +0800
+
+    merged with local dev branches.
+
+commit 831fa84c02838a405b3b49a5af06c9ecbd1d3751
+Author: matianfu <matianfu@gmail.com>
+Date:   Sat Apr 19 03:51:17 2014 +0800
+
+    updated gitattributes.
+
+commit cf318a492c79ea05046bc2aebc6c1ffa066ceac4
+Author: matianfu <matianfu@gmail.com>
+Date:   Sat Apr 19 03:34:47 2014 +0800
+
+    pick .gitattributes from f_play branch.
+
+commit fc59a8d7fb9a232f3dfb15c06eacdf79984c7302
+Author: matianfu <matianfu@gmail.com>
+Date:   Sat Apr 19 03:31:04 2014 +0800
+
+    add .gitattributes.
+
+commit ab8af928ecf63d604e02a9f50cab279561a2e5d8
+Author: matianfu <matianfu@gmail.com>
+Date:   Sat Apr 19 03:17:13 2014 +0800
+
+    update pages.c
+
+commit e0feba4cf6a1d8bdaa9502bea096d25f84dc398e
+Author: matianfu <matianfu@gmail.com>
+Date:   Sat Apr 19 03:15:53 2014 +0800
+
+    pages.c update.
+
+commit 993dd9a250d52dca3d20e36620d97e6892872c8a
+Author: matianfu <matianfu@gmail.com>
+Date:   Sat Apr 19 02:23:04 2014 +0800
+
+    test to change some files to unix endings.
+
+commit 5b89c6149b0293a81606d15aaa9bcfb0404095de
+Author: matianfu <matianfu@gmail.com>
+Date:   Sat Apr 19 02:19:45 2014 +0800
+
+    convert some file to unix endings.
+
+commit 11feb76fd6e2dbb9a6e523add4352cf94d3bd69e
+Author: matianfu <matianfu@gmail.com>
+Date:   Sat Apr 19 02:04:34 2014 +0800
+
+    ignore orig file, which is the backup of some operations.
+
+commit 3355135dd7c925f734d76becf9377259f1aa56d2
+Author: matianfu <matianfu@gmail.com>
+Date:   Sat Apr 19 00:24:01 2014 +0800
+
+    remove dep file from tracking.
+
+commit ce30f686958353cddf22abceeb55bb101d6b9ac9
+Author: matianfu <matianfu@gmail.com>
+Date:   Sat Apr 19 00:21:33 2014 +0800
+
+    stop tracking .dep file.
+
+commit d026be06cdbfb4b22d46634a9603f07ef2cac978
+Author: matianfu <matianfu@gmail.com>
+Date:   Fri Apr 18 23:13:15 2014 +0800
+
+    remove files from settings directory, ignore dep file.
+
+commit ea00c069bf06d3252483eabeefab1a6aa7a7db25
+Author: matianfu <matianfu@gmail.com>
+Date:   Fri Apr 18 23:13:15 2014 +0800
+
+    update ignore. remove settings and dep files.
+
+commit 776952715640f694f256a1318fef5da2f8fec65e
+Author: matianfu <matianfu@gmail.com>
+Date:   Fri Apr 18 19:54:20 2014 +0800
+
+    my branch snapshot before first refactor and merge.
+
+commit 9ffaef4a9f05cadf5357515d92cf87018b71fb16
+Author: fanqh <fanqinghua@actnova.com>
+Date:   Fri Apr 18 16:48:19 2014 +0800
+
+    add state in MTC and have pass test
+
+commit dca56522f6b46930fc3b4b8a1c4c94f394c199c9
+Author: fanqinghua <fanqinghua@actnvova.com>
+Date:   Thu Apr 17 11:33:32 2014 +0800
+
+    first commit to remote by fanqh
+
+commit 93c0e301080cc3a4d2bd696db331c734a42ba1d1
+Author: matianfu <matianfu@gmail.com>
+Date:   Fri Apr 11 05:40:28 2014 +0800
+
+    Dirty works for a quick demo. Many pitfalls.
+
+commit 13e4eb53d757458e913bcd0c8263fdcd57e4f6a8
+Author: matianfu <matianfu@gmail.com>
+Date:   Thu Apr 10 13:31:42 2014 +0800
+
+    settings ignored. add certain project settings by add -f.
+
+commit 91b2b38e30f2bbe3d4e3b2711dbb83bc22c4d96e
+Author: matianfu <matianfu@gmail.com>
+Date:   Thu Apr 10 13:28:29 2014 +0800
+
+    remove settings out of .gitignore.
+
+commit 2a0862ddc59841cbb9dbc22f1bbf470879542083
+Author: matianfu <matianfu@gmail.com>
+Date:   Thu Apr 10 12:37:54 2014 +0800
+
+    One-time-for-all configuration seems to work. Branch it for work-around demo.
+
+commit 85aa3d452f7e991dc33946c5cf3ee0c8babdaf6d
+Author: matianfu <matianfu@gmail.com>
+Date:   Wed Apr 9 22:13:12 2014 +0800
+
+    protothread library added. some files extracted from RN171 PICTAIL Web Server demo added.
+
+commit 0697f26c104171e56c4fe118fdb7a58f08a0b59d
+Author: matianfu <matianfu@gmail.com>
+Date:   Mon Apr 7 22:26:25 2014 +0800
+
+    autofile added.
+
+commit ee539e8f02669ac8dd2362cf35799fec9f8e1a1e
+Author: matianfu <matianfu@gmail.com>
+Date:   Mon Apr 7 16:04:50 2014 +0800
+
+    six files copied from PICTAIL web server project.
+
+commit fafbeeda77344ac010022a62df4f8d270aad3b95
+Author: matianfu <matianfu@gmail.com>
+Date:   Mon Apr 7 15:58:57 2014 +0800
+
+    New configuration, Preprocessor Macro updated, gitignore file updated.
+
+commit b8434fea779701ca04dfeb464dad5e268ae5a5de
+Author: matianfu <matianfu@gmail.com>
+Date:   Sun Apr 6 19:26:48 2014 +0800
+
+    fresh installation of TI BLE stack v1.4, Components and Projects.
+
+commit b88aa8563d1bf2e78b3b90db841290f8f4764fe9
+Author: U-WHO\ma <ma@who.(none)>
+Date:   Sun Apr 6 18:45:30 2014 +0800
+
+    push test.
