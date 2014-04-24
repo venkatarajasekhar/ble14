@@ -1,3 +1,4 @@
+
 /*******************************************************************************
   The wifly module-level command/response API functions prototypes
 
@@ -189,10 +190,11 @@ typedef struct
 
 
 // Command "Response" Strings
-#define STD_RESPONSE                "4.41"      // all replies must contain WiFly fw version
+#define STD_RESPONSE                "4.00"      // all replies must contain WiFly fw version
 #define GENERIC_RESPONSE            "AOK"
 #define FILE_SAVE_RESPONSE          "Storing in config"
 #define ACTION_EXIT_RESPONSE        "EXIT"
+#define REPLACEMENT                 "$"
 
 /******************************************************************************/
 // Editable TCP/WiFi Module Parameters (defaults listed)
