@@ -109,8 +109,9 @@ char debug_buf[DEBUG_BUF_SIZE];
 //the count of no ping at connect state
 #define CONN_NP_LIMIT     10
 
-#define PONG      1
-#define NOPONG    0
+#define PONG               1
+#define NOPONG             0
+#define DISCONNCT          0XFF                                
 
 #define SENDPING "PING\r\n"
 
@@ -169,8 +170,8 @@ static uint16      	contentLen = 0;
 
 static uint16 		fillingPostData = 0;
 
-static uint16 NoPongCount = 0;
-static bool ConnectState =  false;
+//static uint16 NoPongCount = 0;
+//static bool ConnectState =  false;
 
 
 enum WIFISTATE
@@ -245,8 +246,8 @@ static halUARTCfg_t uartConfig;
 
 unsigned char 		wiflyInBuffer[512];
 uint16 				wiflyInBufferIndex;
-static bool			discardUartRX = TRUE;
-static uint16		debugCount = 0;
+//static bool			discardUartRX = TRUE;
+//static uint16		debugCount = 0;
 static uint16 NP_Counter = 0;
 
 // typedef void (*halUARTCBack_t) (uint8 port, uint8 event);
@@ -535,6 +536,7 @@ PT_THREAD(wifly_send_command_pt(struct pt * pt))
 {
   static uint32 timestamp;
   static wifly_send_command_param_t* param = &wifly_send_command_params;
+  uint16 len;
   
   PT_BEGIN(pt);
   
@@ -575,10 +577,11 @@ PT_THREAD(wifly_send_command_pt(struct pt * pt))
   memset(wiflyInBuffer, '\0', sizeof(wiflyInBuffer));
   DELAY_MS(param->delay);
   
-  HalUARTRead(HAL_UART_PORT_0, (uint8*)wiflyInBuffer, Hal_UART_RxBufLen(HAL_UART_PORT_0));
+  len = HalUARTRead(HAL_UART_PORT_0, (uint8*)wiflyInBuffer, Hal_UART_RxBufLen(HAL_UART_PORT_0));
     
   // search for instance of "command_response" within the Rx buffer
-  error = (strstr(wiflyInBuffer, param -> response)) ? SUCCESS : FAILURE;
+  if(len)
+    error = (strstr((char const*)wiflyInBuffer, param -> response)) ? SUCCESS : FAILURE;
 
   PT_END(pt);
 }
@@ -594,27 +597,34 @@ PT_THREAD(wifly_reconfigure_pt(struct pt * pt))
   
   /* put module in infrastructure mode using the configuration parameters */
   PT_SPAWN(pt, &child, wifly_enter_command_mode_pt(&child));
-  // if (error) PT_EXIT(pt);
+   if (error) PT_EXIT(pt);
+  
 
   // leave any auto-joined network
   wifly_send_command_prepare(ACTION_LEAVE, NULL, NULL, NULL, NULL, 0);
   PT_SPAWN(pt, &child, wifly_send_command_pt(&child));
  // if (error) PT_EXIT(pt);
   
+  // set uart repacement character($) to replace <X.XX>
+  wifly_send_command_prepare(SET, UART, MODE, "0X20", STD_RESPONSE, 0);
+  PT_SPAWN(pt, &child, wifly_send_command_pt(&child));
+ // if (error) PT_EXIT(pt);
+  
   // re-program SSID, passphrase, channel from user input
-  wifly_send_command_prepare(SET, WLAN, SSID, ssid, STD_RESPONSE, 500);
+  wifly_send_command_prepare(SET, WLAN, SSID, ssid, REPLACEMENT, 500);
   PT_SPAWN(pt, &child, wifly_send_command_pt(&child));
   //if (error) PT_EXIT(pt);  
 
-  wifly_send_command_prepare(SET, WLAN, PHRASE, passwd, STD_RESPONSE, 500);
+  wifly_send_command_prepare(SET, WLAN, PHRASE, passwd, REPLACEMENT, 500);
   PT_SPAWN(pt, &child, wifly_send_command_pt(&child));
   //if (error) PT_EXIT(pt);   
 
-  wifly_send_command_prepare(SET, WLAN, CHANNEL, chan, STD_RESPONSE, 500);
+  wifly_send_command_prepare(SET, WLAN, CHANNEL, chan, REPLACEMENT, 500);
   PT_SPAWN(pt, &child, wifly_send_command_pt(&child));
   //if (error) PT_EXIT(pt);  
+  
   // restore ip parameters
-  wifly_send_command_prepare(SET, IP, DHCP, DHCP_MODE_ON, STD_RESPONSE, 500);
+  wifly_send_command_prepare(SET, IP, DHCP, DHCP_MODE_ON, REPLACEMENT, 500);
   PT_SPAWN(pt, &child, wifly_send_command_pt(&child));
   //if (error) PT_EXIT(pt);  
 
@@ -623,54 +633,56 @@ PT_THREAD(wifly_reconfigure_pt(struct pt * pt))
    * WILL NOT START !!!!!, and the http client demo is dependent on the
    * dns client process auto starting.
    */
-  wifly_send_command_prepare(SET, IP, HOST, iphost, STD_RESPONSE, 500);
+  wifly_send_command_prepare(SET, IP, HOST, iphost, REPLACEMENT, 500);
   PT_SPAWN(pt, &child, wifly_send_command_pt(&child));
   //if (error) PT_EXIT(pt); 
   
   // tcp client only
-  wifly_send_command_prepare(SET, IP, "protocol", "0x08", STD_RESPONSE, 500);
+  wifly_send_command_prepare(SET, IP, "protocol", "0x08", REPLACEMENT, 500);
   PT_SPAWN(pt, &child, wifly_send_command_pt(&child));
   //if (error) PT_EXIT(pt);   
 
-  wifly_send_command_prepare(SET, SYS, "autoconn", "10", STD_RESPONSE, 500);
+  //connect to a stored remote every  <value> seconds
+  wifly_send_command_prepare(SET, SYS, "autoconn", "10", REPLACEMENT, 500);
   PT_SPAWN(pt, &child, wifly_send_command_pt(&child));
   //if (error) PT_EXIT(pt); 
   
   // set ip flags 0x6, disable tcp retry if ap lost
-//  wifly_send_command_prepare(SET, IP, "flags", "0x6", STD_RESPONSE, 500);
+//  wifly_send_command_prepare(SET, IP, "flags", "0x6", REPLACEMENT, 500);
 //  PT_SPAWN(pt, &child, wifly_send_command_pt(&child));
   //if (error) PT_EXIT(pt);   
 
   
   // restore remaining module parameters to defaults (those changed by entry into EZConfig mode)
-  // set comm close 0
-  wifly_send_command_prepare(SET, COMM, CLOSE, CLOSE_VALUE, STD_RESPONSE, 500);
+  // set comm close 0   when the tcp port close, the <value> send to the local uart
+  wifly_send_command_prepare(SET, COMM, CLOSE, CLOSE_VALUE, REPLACEMENT, 500);
   PT_SPAWN(pt, &child, wifly_send_command_pt(&child));
   // if (error) PT_EXIT(pt);   
-  // set comm open 0
-  wifly_send_command_prepare(SET, COMM, OPEN, OPEN_VALUE, STD_RESPONSE, 500);
+  // set comm open 0  when the tcp port open, the <value> send to the local uart
+  wifly_send_command_prepare(SET, COMM, OPEN, OPEN_VALUE, REPLACEMENT, 500);
   PT_SPAWN(pt, &child, wifly_send_command_pt(&child));
   // if (error) PT_EXIT(pt);  
-  // set comm remote 0
-  wifly_send_command_prepare(SET, COMM, REMOTE, COMM_REMOTE_VALUE, STD_RESPONSE, 500);
+  
+  // set comm remote 0  the assc sting is send to the remote tcp client when the tcp port is open
+  wifly_send_command_prepare(SET, COMM, REMOTE, COMM_REMOTE_VALUE, REPLACEMENT, 500);
   PT_SPAWN(pt, &child, wifly_send_command_pt(&child));
   // if (error) PT_EXIT(pt); 
-  // set wlan join 1
-  wifly_send_command_prepare(SET, WLAN, JOIN, JOIN_VALUE, STD_RESPONSE, 500);
+  // set wlan join 1  to connect the store ssid
+  wifly_send_command_prepare(SET, WLAN, JOIN, JOIN_VALUE, REPLACEMENT, 500);
   PT_SPAWN(pt, &child, wifly_send_command_pt(&child));
   
     // set the length of time to wait for join ap
-  wifly_send_command_prepare(SET, "opt", "jointmr", "3000", STD_RESPONSE, 500);
+  wifly_send_command_prepare(SET, "opt", "jointmr", "3000", REPLACEMENT, 500);
   PT_SPAWN(pt, &child, wifly_send_command_pt(&child));
   // if (error) PT_EXIT(pt); 
   
-  // set sys iofunc 0x50
-  wifly_send_command_prepare(SET, SYS, IOFUNC, "0x50", STD_RESPONSE, 500);
+  // set sys iofunc 0x50  enable gpio4 and gpio6
+  wifly_send_command_prepare(SET, SYS, IOFUNC, "0x50", REPLACEMENT, 500);
   PT_SPAWN(pt, &child, wifly_send_command_pt(&child));
   // if (error) PT_EXIT(pt); 
 
   // save the changes
-  wifly_send_command_prepare(FILEIO_SAVE, NULL, NULL, NULL, STD_RESPONSE, 500);
+  wifly_send_command_prepare(FILEIO_SAVE, NULL, NULL, NULL, REPLACEMENT, 500);
   PT_SPAWN(pt, &child, wifly_send_command_pt(&child));
   
   
@@ -1118,6 +1130,8 @@ PT_THREAD(pt_test1(struct pt * pt) ) {
 	//	start time
 	osal_start_reload_timer( simpleBLETaskId, TIMER1_EVT, PERIODTIME );	
 	flushUARTRxBuffer(HAL_UART_PORT_0);
+    
+    WifiState = DISCONNECT;
 	DisconnectEntry();
 		
 //		while (1 == P0_0) { // wait for tcp connection
@@ -1292,10 +1306,18 @@ void ProcessTimeEvent(void)
 			response = PONG;
 		}
 	}
+    
+    if(((P0_0==0)||(P0_1==0))&&(WifiState==CONNECT))  //add by fan
+    {   
+        response = NOPONG;
+      	ConnectExit();
+		WifiState = DISCONNECT;
+		DisconnectEntry();       
+    }
 
 	if (STATE_DEBUG) {	
 		sprintf(debug_buf, "before: e: %s, st: %d, cnt: %d\r\n", (response == PONG ? "PONG" : "NOPONG"), WifiState, NP_Counter);
-		HalUARTWrite(HAL_UART_PORT_0, debug_buf, strlen(debug_buf));
+		HalUARTWrite(HAL_UART_PORT_0, (unsigned char*)debug_buf, strlen(debug_buf));
 	}
 	
 	switch(response)
@@ -1349,7 +1371,7 @@ void ProcessTimeEvent(void)
 	if (STATE_DEBUG) {
 		
 		sprintf(debug_buf, "after : e: %s, st: %d, cnt: %d\r\n\r\n", (response == PONG ? "PONG" : "NOPONG"), WifiState, NP_Counter);
-		HalUARTWrite(HAL_UART_PORT_0, debug_buf, strlen(debug_buf));
+		HalUARTWrite(HAL_UART_PORT_0, (unsigned char*)debug_buf, strlen(debug_buf));
 	}
 }
 
@@ -1535,7 +1557,7 @@ static void simpleBLEObserverEventCB( gapObserverRoleEvent_t *pEvent )
 			  HalUARTWrite(HAL_UART_PORT_0, ".", 1);
 		  }
 		  else {
-			HalUARTWrite(HAL_UART_PORT_0, bdAddr2Str( pEvent->deviceInfo.addr ), 14);
+			HalUARTWrite(HAL_UART_PORT_0, (unsigned char*)bdAddr2Str( pEvent->deviceInfo.addr ), 14);
 			//HalUARTWrite(HAL_UART_PORT_0, "\r\n", 2);
 			// simpleBLEAddDeviceInfo( pEvent->deviceInfo.addr, pEvent->deviceInfo.addrType );
 			HalUARTWrite(HAL_UART_PORT_0,(unsigned char*)DCtoHEX((uint8*) &pEvent->deviceInfo.rssi ), 4);
