@@ -165,6 +165,10 @@ typedef union
  */
 extern void HalUARTInit ( void );
 
+
+void HalUart1Init(halUARTCfg_t *pconfig);
+extern void HalUart1Write(uint8 *buf, uint16 len);
+
 /*
  * Open a port based on the configuration
  */

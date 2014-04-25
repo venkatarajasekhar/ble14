@@ -311,6 +311,18 @@ void HalUARTPoll(void)
 #endif
 }
 
+#ifdef PLUS_UART1
+void HalUart1Init(halUARTCfg_t *pconfig)
+{   
+    HalUART1Init(pconfig);
+}
+void HalUart1Write(uint8 *buf, uint16 len)
+{
+    HalUART1Write(buf, len);
+}
+
+#endif
+
 /**************************************************************************************************
  * @fn      Hal_UART_RxBufLen()
  *

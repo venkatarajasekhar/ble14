@@ -332,6 +332,7 @@ static volatile uint8 dmaRdyIsr;
 static uint8 dmaRdyDly;  // Minimum delay before allowing sleep after detecting RdyIn de-asserted.
 
 static uartDMACfg_t dmaCfg;
+static uartDMACfg_t dmaCfg1;
 
 /* ------------------------------------------------------------------------------------------------
  *                                          Global Functions
@@ -353,6 +354,12 @@ static uint16 HalUARTWriteDMA(uint8 *buf, uint16 len);
 static void HalUARTPollDMA(void);
 static uint16 HalUARTRxAvailDMA(void);
 static uint8 HalUARTBusyDMA(void);
+
+#ifdef PLUS_UART1
+static void HalUART1Init(halUARTCfg_t *config);
+static uint16 HalUART1Write(uint8 *buf, uint16 len);
+#endif
+
 #if !HAL_UART_TX_BY_ISR
 static void HalUARTPollTxTrigDMA(void);
 static void HalUARTArmTxDMA(void);
@@ -1067,4 +1074,150 @@ HAL_ISR_FUNCTION( halUart1TxIsr, UTX1_VECTOR )
 #endif
 
 /**************************************************************************************************
+added by fan ,define another uart for debug
+ 
+
+uart1 alt2
+
+ ***************************************************************************************************/
+#ifdef PLUS_UART1
+
+
+static void HalUART1Init(halUARTCfg_t *config)
+{
+
+  PERCFG |= 0x02;     // Set UART1 I/O to Alt. 2 location on P1.
+
+  P1SEL  |= 0xC0;         // Enable Peripheral control of Rx/Tx on Px.
+  U1CSR = CSR_MODE;                  // Mode is UART Mode.
+  U1UCR = UCR_FLUSH;                 // Flush it.
+
+  P2DIR &= ~P2DIR_PRIPO;    //set priority
+  P2DIR |= HAL_UART_PRIPO;
+  
+  
+    // Only supporting subset of baudrate for code size - other is possible.
+  HAL_ASSERT((config->baudRate == HAL_UART_BR_9600) ||
+                  (config->baudRate == HAL_UART_BR_19200) ||
+                  (config->baudRate == HAL_UART_BR_38400) ||
+                  (config->baudRate == HAL_UART_BR_57600) ||
+                  (config->baudRate == HAL_UART_BR_115200));
+
+  if (config->baudRate == HAL_UART_BR_57600 ||
+      config->baudRate == HAL_UART_BR_115200)
+  {
+    U1BAUD = 216;
+  }
+  else
+  {
+    U1BAUD = 59;
+  }
+
+  switch (config->baudRate)
+  {
+    case HAL_UART_BR_9600:
+      U1GCR = 8;
+      break;
+    case HAL_UART_BR_19200:
+      U1GCR = 9;
+      break;
+    case HAL_UART_BR_38400:
+    case HAL_UART_BR_57600:
+      U1GCR = 10;
+      break;
+    default:
+      // HAL_UART_BR_115200
+      U1GCR = 11;
+      break;
+  }
+
+  if (DMA_PM || config->flowControl)
+  {
+    U1UCR = UCR_FLOW | UCR_STOP;      // 8 bits/char; no parity; 1 stop bit; stop bit hi.
+    P1SEL |= 0x10;         // Enable Peripheral control of CTS flow control on Px.
+  }
+  else
+  {
+    U1UCR = UCR_STOP;                 // 8 bits/char; no parity; 1 stop bit; stop bit hi.
+  }
+
+  U1CSR = (CSR_MODE | CSR_RE);
+
+  if (DMA_PM)
+  {
+    P1IFG = 0;
+    P1IF = 0;
+    IEN2 |= BV(4);
+  }
+  else if (U1UCR & UCR_FLOW)
+  {
+    // DMA Rx is always on (self-resetting). So flow must be controlled by the S/W polling the
+    // circular Rx queue depth. Start by allowing flow.
+    HAL_UART_DMA_SET_RDY_OUT();
+    P1DIR |= 0x20;            //RTS set
+  }
+
+#if HAL_UART_TX_BY_ISR
+  UTX1IF = 1;  // Prime the ISR pump.
+#endif
+}
+
+
+
+static uint16 HalUART1Write(uint8 *buf, uint16 len)
+{
+  if (HAL_UART_DMA_TX_AVAIL() < len)
+  {
+    return 0;
+  }
+  for (uint16 cnt = 0; cnt < len; cnt++)
+  {
+    dmaCfg1.txBuf[dmaCfg1.txTail] = *buf++;
+    dmaCfg1.txMT = 0;
+
+    if (dmaCfg1.txTail >= HAL_UART_DMA_TX_MAX-1)
+    {
+      dmaCfg1.txTail = 0;
+    }
+    else
+    {
+      dmaCfg1.txTail++;
+    }
+
+    // Keep re-enabling ISR as it might be keeping up with this loop due to other ints.
+    IEN2 |= UTX1IE;
+  }
+
+  return len;
+}
+
+
+HAL_ISR_FUNCTION( halUart1TxIsr, UTX1_VECTOR )
+{
+  HAL_ENTER_ISR();
+
+  if (dmaCfg1.txHead == dmaCfg1.txTail)
+  {
+    IEN2 &= ~UTX1IE;
+    dmaCfg1.txMT = 1;
+  }
+  else
+  {
+    UTX1IF = 0;
+    U1DBUF = dmaCfg1.txBuf[dmaCfg1.txHead++];
+
+    if ((HAL_UART_DMA_TX_MAX != 256) && (dmaCfg1.txHead >= HAL_UART_DMA_TX_MAX))
+    {
+      dmaCfg1.txHead = 0;
+    }
+  }
+
+  HAL_EXIT_ISR();
+}
+
+#endif
+
+
+/**************************************************************************************************
 */
+

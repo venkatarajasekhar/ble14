@@ -244,6 +244,11 @@ static uint8 error;
 
 static halUARTCfg_t uartConfig;
 
+#ifdef PLUS_UART1
+static halUARTCfg_t uartConfig1;
+#endif
+
+
 unsigned char 		wiflyInBuffer[512];
 uint16 				wiflyInBufferIndex;
 //static bool			discardUartRX = TRUE;
@@ -597,7 +602,7 @@ PT_THREAD(wifly_reconfigure_pt(struct pt * pt))
   
   /* put module in infrastructure mode using the configuration parameters */
   PT_SPAWN(pt, &child, wifly_enter_command_mode_pt(&child));
-   if (error) PT_EXIT(pt);
+   //if (error) PT_EXIT(pt);
   
 
   // leave any auto-joined network
@@ -1117,6 +1122,7 @@ PT_THREAD(pt_test1(struct pt * pt) ) {
 	PT_SPAWN(pt, &child, wifly_hard_reset_pt(&child));
 	DELAY_MS(1000);
 
+
 	/**
 			PT_SPAWN(pt, &child, wifly_hard_reset_pt(&child));
 			DELAY_MS(1000);
@@ -1213,7 +1219,7 @@ void SimpleBLEObserver_Init( uint8 task_id )
   RegisterForKeys( simpleBLETaskId );
   
   // makes sure LEDs are off
-  HalLedSet( (HAL_LED_1 | HAL_LED_2), HAL_LED_MODE_OFF );
+ // HalLedSet( (HAL_LED_1 | HAL_LED_2), HAL_LED_MODE_OFF );
   
   uartConfig.configured = TRUE;
   uartConfig.baudRate = HAL_UART_BR_9600;
@@ -1227,6 +1233,24 @@ void SimpleBLEObserver_Init( uint8 task_id )
   
   HalUARTOpen(HAL_UART_PORT_0, &uartConfig);
   
+#ifdef PLUS_UART1
+  
+  uartConfig1.configured = TRUE;
+  uartConfig1.baudRate = HAL_UART_BR_9600;
+  uartConfig1.flowControl = FALSE;
+  uartConfig1.flowControlThreshold = 0;
+  uartConfig1.rx.maxBufSize = 256;
+  uartConfig1.tx.maxBufSize = 256;
+  uartConfig1.idleTimeout = 6;
+  uartConfig1.intEnable = TRUE;
+  uartConfig1.callBackFunc = uartCB;
+  
+  HalUart1Init(&uartConfig1);
+  
+  HalUart1Write("hello1", 6);
+
+#endif
+
   // Setup a delayed profile startup
   osal_set_event( simpleBLETaskId, START_DEVICE_EVT );
   osal_set_event( simpleBLETaskId, SELF_MESSAGE_EVT );
