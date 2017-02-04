@@ -23,7 +23,7 @@
   its documentation for any purpose.
 
   YOU FURTHER ACKNOWLEDGE AND AGREE THAT THE SOFTWARE AND DOCUMENTATION ARE
-  PROVIDED “AS IS” WITHOUT WARRANTY OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+  PROVIDED â€œAS ISâ€ WITHOUT WARRANTY OF ANY KIND, EITHER EXPRESS OR IMPLIED,
   INCLUDING WITHOUT LIMITATION, ANY WARRANTY OF MERCHANTABILITY, TITLE,
   NON-INFRINGEMENT AND FITNESS FOR A PARTICULAR PURPOSE. IN NO EVENT SHALL
   TEXAS INSTRUMENTS OR ITS LICENSORS BE LIABLE OR OBLIGATED UNDER CONTRACT,
@@ -692,7 +692,7 @@ uint16 Glucose_ProcessEvent( uint8 task_id, uint16 events )
 
   if ( events & SYS_EVENT_MSG )
   {
-    uint8 *pMsg;
+    uint8 *pMsg = NULL;
 
     if ( (pMsg = osal_msg_receive( glucoseTaskId )) != NULL )
     {
@@ -709,7 +709,7 @@ uint16 Glucose_ProcessEvent( uint8 task_id, uint16 events )
   if ( events & START_DEVICE_EVT )
   {
     // Start the Device
-    VOID GAPRole_StartDevice( &glucose_PeripheralCBs );
+    GAPRole_StartDevice( &glucose_PeripheralCBs );
 
     // Register with bond manager after starting device
     GAPBondMgr_Register( (gapBondCBs_t *) &glucoseBondCB );
@@ -739,14 +739,17 @@ uint16 Glucose_ProcessEvent( uint8 task_id, uint16 events )
  */
 static void glucose_ProcessOSALMsg( osal_event_hdr_t *pMsg )
 {
-  switch ( pMsg->event )
+  osal_event_hdr_t *glucose_pMsg = pMsg;
+  if(!glucose_pMsg)
+    return;
+  switch ( glucose_pMsg->event )
   {
   case KEY_CHANGE:
-      glucose_HandleKeys( ((keyChange_t *)pMsg)->state, ((keyChange_t *)pMsg)->keys );
+      glucose_HandleKeys( ((keyChange_t *)glucose_pMsg)->state, ((keyChange_t *)glucose_pMsg)->keys );
       break;
 
   case CTL_PNT_MSG:
-      glucoseProcessCtlPntMsg( (glucoseCtlPntMsg_t *) pMsg);
+      glucoseProcessCtlPntMsg( (glucoseCtlPntMsg_t *) glucose_pMsg);
       break;
 
   default:
@@ -879,12 +882,15 @@ static void glucoseSendNext( void )
  */
 static void glucoseProcessCtlPntMsg( glucoseCtlPntMsg_t* pMsg)
 {
-  uint8 opcode = pMsg->data[0];
-  uint8 oper = pMsg->data[1];
+  glucoseCtlPntMsg_t *pglucose_prcctl = pMsg;
+  uint8 opcode = pglucose_prcctl->data[0];
+  uint8 oper = pglucose_prcctl->data[1];
   UTCTimeStruct time1, time2;
   bool opcodeValid = true;
   uint16 seqNum1, seqNum2;
-
+  if(!pglucose_prcctl)
+    return;
+    
   switch(opcode)
   {
   case CTL_PNT_OP_REQ:
@@ -919,7 +925,7 @@ static void glucoseProcessCtlPntMsg( glucoseCtlPntMsg_t* pMsg)
     case CTL_PNT_OPER_ALL:
     case CTL_PNT_OPER_FIRST:
     case CTL_PNT_OPER_LAST:
-      if(pMsg->len == 2)
+      if(pglucose_prcctl->len == 2)
       {
         glucoseCtlPntHandleOpcode(opcode, oper, 0, NULL, NULL);
       }
@@ -933,37 +939,37 @@ static void glucoseProcessCtlPntMsg( glucoseCtlPntMsg_t* pMsg)
 
     case CTL_PNT_OPER_RANGE:
       // check filter type
-      if (pMsg->data[2] == CTL_PNT_FILTER_SEQNUM && pMsg->len == 7)
+      if (pglucose_prcctl->data[2] == CTL_PNT_FILTER_SEQNUM && pglucose_prcctl->len == 7)
       {
-        seqNum1 = BUILD_UINT16(pMsg->data[3], pMsg->data[4]);
-        seqNum2 = BUILD_UINT16(pMsg->data[5], pMsg->data[6]);
+        seqNum1 = BUILD_UINT16(pMsg->data[3], pglucose_prcctl->data[4]);
+        seqNum2 = BUILD_UINT16(pMsg->data[5], pglucose_prcctl->data[6]);
 
         if ( seqNum1 <= seqNum2 )
         {
-          glucoseCtlPntHandleOpcode(opcode, oper, pMsg->data[2], &seqNum1, &seqNum2);
+          glucoseCtlPntHandleOpcode(opcode, oper, pglucose_prcctl->data[2], &seqNum1, &seqNum2);
         }
         else
         {
           glucoseCtlPntResponse(CTL_PNT_RSP_OPERAND_INVALID, opcode);
         }
       }
-      else if (pMsg->data[2] == CTL_PNT_FILTER_TIME && pMsg->len == 17)
+      else if (pglucose_prcctl->data[2] == CTL_PNT_FILTER_TIME && pglucose_prcctl->len == 17)
       {
-        time1.year = BUILD_UINT16(pMsg->data[3], pMsg->data[4]);
-        time1.month = pMsg->data[5];
-        time1.day = pMsg->data[6];
-        time1.hour = pMsg->data[7];
-        time1.minutes = pMsg->data[8];
-        time1.seconds = pMsg->data[9];
+        time1.year = BUILD_UINT16(pglucose_prcctl->data[3], pglucose_prcctl->data[4]);
+        time1.month = pglucose_prcctl->data[5];
+        time1.day = pglucose_prcctl->data[6];
+        time1.hour = pglucose_prcctl->data[7];
+        time1.minutes = pglucose_prcctl->data[8];
+        time1.seconds = pglucose_prcctl->data[9];
 
-        time2.year = BUILD_UINT16(pMsg->data[10], pMsg->data[11]);
-        time2.month = pMsg->data[12];
-        time2.day = pMsg->data[13];
-        time2.hour = pMsg->data[14];
-        time2.minutes = pMsg->data[15];
-        time2.seconds = pMsg->data[16];
+        time2.year = BUILD_UINT16(pglucose_prcctl->data[10], pglucose_prcctl->data[11]);
+        time2.month = pglucose_prcctl->data[12];
+        time2.day = pglucose_prcctl->data[13];
+        time2.hour = pglucose_prcctl->data[14];
+        time2.minutes = pglucose_prcctl->data[15];
+        time2.seconds = pglucose_prcctl->data[16];
 
-        glucoseCtlPntHandleOpcode(opcode, oper, pMsg->data[2], &time1, &time2);
+        glucoseCtlPntHandleOpcode(opcode, oper, pglucose_prcctl->data[2], &time1, &time2);
       }
       else
       {
@@ -974,20 +980,20 @@ static void glucoseProcessCtlPntMsg( glucoseCtlPntMsg_t* pMsg)
     case CTL_PNT_OPER_LESS_EQUAL:
     case CTL_PNT_OPER_GREATER_EQUAL:
       // check filter type
-      if (pMsg->data[2] == CTL_PNT_FILTER_SEQNUM && pMsg->len == 5)
+      if (pglucose_prcctl->data[2] == CTL_PNT_FILTER_SEQNUM && pglucose_prcctl->len == 5)
       {
-        seqNum1 = BUILD_UINT16(pMsg->data[3], pMsg->data[4]);
+        seqNum1 = BUILD_UINT16(pglucose_prcctl->data[3], pglucose_prcctl->data[4]);
 
         glucoseCtlPntHandleOpcode(opcode, oper, pMsg->data[2], &seqNum1, NULL);
       }
-      else if (pMsg->data[2] == CTL_PNT_FILTER_TIME && pMsg->len == 10)
+      else if (pglucose_prcctl->data[2] == CTL_PNT_FILTER_TIME && pglucose_prcctl->len == 10)
       {
-        time1.year = BUILD_UINT16(pMsg->data[3], pMsg->data[4]);
-        time1.month = pMsg->data[5];
-        time1.day = pMsg->data[6];
-        time1.hour = pMsg->data[7];
-        time1.minutes = pMsg->data[8];
-        time1.seconds = pMsg->data[9];
+        time1.year = BUILD_UINT16(pglucose_prcctl->data[3], pglucose_prcctl->data[4]);
+        time1.month = pglucose_prcctl->data[5];
+        time1.day = pglucose_prcctl->data[6];
+        time1.hour = pglucose_prcctl->data[7];
+        time1.minutes = pglucose_prcctl->data[8];
+        time1.seconds = pglucose_prcctl->data[9];
 
         glucoseCtlPntHandleOpcode(opcode, oper, pMsg->data[2], &time1, NULL);
       }
@@ -1105,7 +1111,7 @@ static void glucosePairStateCB( uint16 connHandle, uint8 state, uint8 status )
   {
     if ( status == SUCCESS )
     {
-      linkDBItem_t  *pItem;
+      linkDBItem_t  *pItem = NULL;
 
       if ( (pItem = linkDB_Find( gapConnHandle )) != NULL )
       {
@@ -1331,7 +1337,7 @@ static void glucoseCB(uint8 event, uint8* valueP, uint8 len)
   {
   case GLUCOSE_CTL_PNT_CMD:
     {
-      glucoseCtlPntMsg_t* msgPtr;
+      glucoseCtlPntMsg_t* msgPtr = NULL;
 
       // Send the address to the task
       msgPtr = (glucoseCtlPntMsg_t *)osal_msg_allocate( sizeof(glucoseCtlPntMsg_t) );
